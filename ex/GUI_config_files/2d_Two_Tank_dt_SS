@@ -1,0 +1,30 @@
+{
+    "mode": "discrete_stochastic",
+    "dim": "2",
+    "b_degree": "6",
+    "l_degree": "",
+    "solver": "mosek",
+    "gam": "",
+    "lam": "",
+    "L_space": "1,1",
+    "U_space": "10,10",
+    "L_initial": "1.75,1.75",
+    "U_initial": "2.25,2.25",
+    "L_unsafe": [
+        "9,9"
+    ],
+    "U_unsafe": [
+        "10,10"
+    ],
+    "f": [
+        "(1-0.1)*x1 + 4.5*0.1 + varsigma1",
+        "0.1*x1 + (1-0.1)*x2 -3*0.1 + varsigma2"
+    ],
+    "optimize": "false",
+    "c_val": "",
+    "t": "5",
+    "confidence": "0.0",
+    "noise_type": "normal",
+    "mean": "0,0",
+    "sigma": "0.01,0.01"
+}

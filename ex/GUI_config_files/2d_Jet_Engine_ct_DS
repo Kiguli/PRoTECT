@@ -1,0 +1,23 @@
+{
+    "mode": "continuous_deterministic",
+    "dim": "2",
+    "b_degree": "2",
+    "l_degree": "",
+    "solver": "mosek",
+    "gam": "1.4079421583387202",
+    "lam": "1.534711871589113",
+    "L_space": "0.1,0.1",
+    "U_space": "1,1",
+    "L_initial": "0.1,0.1",
+    "U_initial": "0.5,0.5",
+    "L_unsafe": [
+        "0.7,0.7"
+    ],
+    "U_unsafe": [
+        "1,1"
+    ],
+    "f": [
+        "-x2 - 3 / 2 * (x1 ** 2) - 1 / 2 * (x1 ** 3)",
+        "x1"
+    ]
+}

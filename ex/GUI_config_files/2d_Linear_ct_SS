@@ -1,0 +1,36 @@
+{
+    "mode": "continuous_stochastic",
+    "dim": "2",
+    "b_degree": "2",
+    "l_degree": "",
+    "solver": "mosek",
+    "gam": "",
+    "lam": "",
+    "L_space": "-3,-1.5",
+    "U_space": "3,3.5",
+    "L_initial": "-0.25,2.75",
+    "U_initial": "0.25,3.25",
+    "L_unsafe": [
+        "-3,-1.5"
+    ],
+    "U_unsafe": [
+        "3,-1"
+    ],
+    "f": [
+        "-5*x1-4*x2",
+        "-x1-2*x2"
+    ],
+    "optimize": "false",
+    "c_val": "",
+    "t": "5",
+    "confidence": "0.0",
+    "delta": [
+        "0",
+        "0.5*x2"
+    ],
+    "rho": [
+        "0",
+        "0"
+    ],
+    "p_rate": "0,0"
+}
