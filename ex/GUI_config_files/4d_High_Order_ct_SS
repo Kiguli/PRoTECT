@@ -1,5 +1,5 @@
 {
-    "mode": "continuous_deterministic",
+    "mode": "continuous_stochastic",
     "dim": "4",
     "b_degree": "6",
     "l_degree": "",
@@ -21,5 +21,22 @@
         "x3",
         "x4",
         "-3980 * x4 - 4180 * x3 - 2400 * x2 - 576 * x1"
-    ]
+    ],
+    "optimize": "false",
+    "c_val": "",
+    "t": "3",
+    "confidence": "0.0",
+    "delta": [
+        "0.1",
+        "0.1",
+        "0.1",
+        "0.1"
+    ],
+    "rho": [
+        "",
+        "",
+        "",
+        ""
+    ],
+    "p_rate": ""
 }

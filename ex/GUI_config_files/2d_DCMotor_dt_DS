@@ -1,0 +1,23 @@
+{
+    "mode": "discrete_deterministic",
+    "dim": "2",
+    "b_degree": "6",
+    "l_degree": "",
+    "solver": "mosek",
+    "gam": "",
+    "lam": "",
+    "L_space": "0.1,0.1",
+    "U_space": "0.5,1",
+    "L_initial": "0.1,0.1",
+    "U_initial": "0.4,1",
+    "L_unsafe": [
+        "0.45,0.6"
+    ],
+    "U_unsafe": [
+        "0.5,1"
+    ],
+    "f": [
+        "x1+0.01*(-1/0.01*x1-0.01/0.01*x2)",
+        "x2+0.01*(0.01/0.01*x1 - 1/0.01*x2)"
+    ]
+}
