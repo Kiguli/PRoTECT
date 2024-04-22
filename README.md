@@ -70,7 +70,7 @@ The related paper will be published to arXiv imminently and uploaded to this rep
 
 ### Authors
 - [Ben Wooding](https://woodingben.com)
-- [Viacheslav Horbanov](https://github.com/SlaviXG)
+- [Viacheslav Horbanov](https://www.linkedin.com/in/slavixg/)
 - [Abolfazl Lavaei](https://lavaei-cps.de/)
 
 ### Citing PRoTECT
