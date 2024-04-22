@@ -31,7 +31,7 @@ class Jet2(control.DynamicalModel):
         return [-x2-1.5*x1**2-0.5*x1**3, x1]
 
         
-class 1dRoomTemp(control.DynamicalModel):
+class RoomTemp1d(control.DynamicalModel):
     n_vars = 1
 
     tau = 5 * 60  # discretise param

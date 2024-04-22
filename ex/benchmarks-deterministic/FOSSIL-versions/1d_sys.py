@@ -9,7 +9,7 @@ from fossil.consts import *
 
 def test_lnn(args):
     batch_size = 5000
-    open_loop = models.1dRoomTemp
+    open_loop = models.RoomTemp1d
     n_vars = open_loop.n_vars
 
     XD = domains.Rectangle(lb=[-6], ub=[6])

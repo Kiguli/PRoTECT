@@ -34,6 +34,7 @@ if __name__ == '__main__':
 
     # ========================= Symbolic Variables =========================
     x = sp.symbols(f'x0:{dim}')  # Create x1, x2, ..., x_degree symbols
+    varsigma = sp.symbols(f'varsigma0:{dim}')
     # ========================= Dynamics =========================
     beta = 0.06
     teta = 0.145
