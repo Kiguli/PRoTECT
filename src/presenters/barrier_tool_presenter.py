@@ -271,7 +271,7 @@ class BarrierToolPresenter:
                                                                         locals=parameters['x'],
                                                                         err_message=f"Please make sure to enter the "
                                                                                     f"correct δ in the line {i + 1}!")
-                                             if s != "" else np.zeros(parameters['dim'], dtype=np.double))
+                                             if s != "" else 0)
                 parameters['delta'] = np.array(delta_expressions)
 
                 rho_expressions = []
@@ -282,7 +282,7 @@ class BarrierToolPresenter:
                                                                       err_message=f"Please make sure to enter the "
                                                                                   f"correct ρ in the line {i + 1}!")
 
-                                           if s != "" else np.zeros(parameters['dim'], dtype=np.double))
+                                           if s != "" else 0)
                 parameters['rho'] = np.array(rho_expressions)
 
                 parameters['p_rate'] = get_np_array_from_string(parameters['p_rate']) \
