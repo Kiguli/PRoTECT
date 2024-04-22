@@ -3,6 +3,7 @@ import sympy as sp
 import numpy as np
 from SumOfSquares import *
 import picos
+import scipy
 
 # IMPORTS FROM TOOL
 from .generate_polynomial import generate_polynomial
@@ -185,20 +186,14 @@ def dt_SS(b_degree, dim, L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_sp
                     s2 = str(s1[k2]).split('^')
 
                     if s2[0] == varsigma[i].name and len(s2) == 1:
-                        m[k] = 0
-                        chk = 1
-                        break
-
-                    if s2[0] == varsigma[i].name and int(s2[1]) % 2 == 1:
-                        m[k] = 0
-                        chk = 1
-                        break
-
-                    if s2[0] == varsigma[i].name:
-                        dfk = int(s2[1])
-                        df = doublefactorial(dfk - 1) * sigma[i] ** dfk
+                        df = scipy.stats.norm.moment(1, mean[i], sigma[i])
                         s1[k2] = str(df)
-
+                    
+                    elif s2[0] == varsigma[i].name:
+                    	dfk = int(s2[1])
+                    	df = scipy.stats.norm.moment(dfk, mean[i], sigma[i])
+                    	s1[k2] = str(df)
+                    	
                 if chk == 0:
                     sy1 = sp.sympify('*'.join(s1))
                     m[k] = sy1
