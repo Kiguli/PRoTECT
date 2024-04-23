@@ -21,7 +21,7 @@ We have provided Youtube tutorial videos to help understand how to use PRoTECT [
 
 ## Installation
 
-To install necessary dependencies, run: <br><br>`pip install -r requirements.txt`
+We assume the user has python3 and pip installed on their machine. To install necessary dependencies, run from the directory containing the repository: <br><br>`pip install -r requirements.txt`
 
 If you choose to use Mosek you will also need a license that can be acquired [here](https://www.mosek.com/license/request/?i=acp) (free for academics).
 
