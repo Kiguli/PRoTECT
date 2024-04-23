@@ -136,19 +136,19 @@ def ct_SS(b_degree, dim, L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_sp
                     raise Exception("User defined parameters will give confidence less than 0!")
         else:
             if gam is None and lam is None and c_val is None:
-                level_set_condition = prob.add_constraint(lv*confidence - gv - cv * t > 0)
+                level_set_condition = prob.add_constraint(lv*(1-confidence) - gv - cv * t > 0)
             elif gam is None and c_val is None:
-                level_set_condition = prob.add_constraint(lambda_*confidence - gv - cv * t > 0)
+                level_set_condition = prob.add_constraint(lambda_*(1-confidence) - gv - cv * t > 0)
             elif lam is None and c_val is None:
-                level_set_condition = prob.add_constraint(lv*confidence - gamma - cv * t > 0)
+                level_set_condition = prob.add_constraint(lv*(1-confidence) - gamma - cv * t > 0)
             elif gam is None and lam is None:
-                level_set_condition = prob.add_constraint(lv*confidence - gv - c * t > 0)
+                level_set_condition = prob.add_constraint(lv*(1-confidence) - gv - c * t > 0)
             elif gam is None:
-                level_set_condition = prob.add_constraint(lambda_*confidence - gv - c * t > 0)
+                level_set_condition = prob.add_constraint(lambda_*(1-confidence) - gv - c * t > 0)
             elif lam is None:
-                level_set_condition = prob.add_constraint(lv*confidence - gamma - c * t > 0)
+                level_set_condition = prob.add_constraint(lv*(1-confidence) - gamma - c * t > 0)
             elif c_val is None:
-                level_set_condition = prob.add_constraint(lambda_*confidence - gamma - cv * t > 0)
+                level_set_condition = prob.add_constraint(lambda_*(1-confidence) - gamma - cv * t > 0)
             else:
                 if (lam <= gam):
                     raise Exception("User defined lambda value is less than user defined gamma!")
