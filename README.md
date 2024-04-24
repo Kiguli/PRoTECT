@@ -9,7 +9,7 @@ PRoTECT is an open-source software tool, for the parallelized
 construction of safety barrier certificates (BCs) for nonlinear polynomial systems. This tool aims to verify safety properties for four classes of dynamical systems: (i) discrete-time stochastic systems (dt-SS), (ii) discrete-time deterministic systems (dt-DS), (iii) continuous-time stochastic systems (ct-SS), and (iv) continuous-time deterministic systems (ct-DS). PRoTECT is implemented in Python as an application programming interface (API), offering users the flexibility to interact either through its user-friendly graphic user interface (GUI) or via function calls from other Python programs. PRoTECT leverages parallelism across different barrier degrees to efficiently search for
 a feasible BC. Additionally, PRoTECT employs sum-of-squares (SOS) optimization programs to systematically search for polynomial-type BCs.
 
-We have provided Youtube tutorial videos to help understand how to use PRoTECT [here]().
+We have provided Youtube tutorial videos to help understand how to use PRoTECT [here](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-).
 
 ## Table of Contents
 - [Installation](#installation)
@@ -17,7 +17,7 @@ We have provided Youtube tutorial videos to help understand how to use PRoTECT [
 - [Related Paper](#related-paper)
 - [Reporting Bugs](#reporting-bugs)
 - [License](#license)
-- [Youtube Videos about PRoTECT]()
+- [Youtube Videos about PRoTECT](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-)
 
 ## Installation
 
@@ -27,7 +27,7 @@ If you choose to use Mosek you will also need a license that can be acquired [he
 
 To use PRoTECT via its GUI, simply navigate a terminal to the current folder and then run `python3 main.py`. You can import pre-configured examples into the GUI from the folder [GUI_config_files](./ex/GUI_config_files/) by clicking the button *Import Config*. You can also run the examples for the [deterministic](./ex/benchmarks-deterministic/PRoTECT-versions/) and [stochastic](./ex/benchmarks-stochastic/) systems from the respective folders with `python3 <example-name>.py` (You may also need to temporarily add PRoTECT to your PATH using `export PYTHONPATH=/<path-to-PRoTECT>/PRoTECT:$PYTHONPATH` before running the examples this way, or permanently add it to your PATH by appending `export PYTHONPATH=$PYTHONPATH:/<path-to-PRoTECT>/PRoTECT` to the end of the file `~/.profile`, or equivalent, and restarting your computer). 
 
-We have provided some tutorial videos which cover the basics of installation and using PRoTECT which can be found [here]().
+We have provided some tutorial videos which cover the basics of installation and using PRoTECT which can be found [here](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-).
 
 ## Examples
 
