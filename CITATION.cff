@@ -1,0 +1,51 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: "PRoTECT: Parallelized Construction of Safety  \tBarrier Certificates for Nonlinear Polynomial Systems"
+message: Please cite protect using this reference...
+type: software
+authors:
+  - given-names: Ben
+    family-names: Wooding
+    email: ben.wooding@newcastle.ac.uk
+    affiliation: Newcastle University
+    orcid: 'https://orcid.org/0000-0003-1713-717X'
+  - given-names: Viacheslav
+    family-names: Horbanov
+    email: v.horbanov2@newcastle.ac.uk
+    affiliation: Newcastle University
+  - given-names: Abolfazl
+    family-names: Lavaei
+    email: abolfazl.lavaei@newcastle.ac.uk
+    affiliation: Newcastle University
+    orcid: 'https://orcid.org/0000-0003-4993-3170'
+identifiers:
+  - type: doi
+    value: 10.48550/arXiv.2404.14804
+    description: arXiv paper
+repository-code: 'https://github.com/Kiguli/PRoTECT/'
+abstract: >-
+  We develop an open-source software tool, called PRoTECT,
+  for the parallelized construction of safety barrier
+  certificates (BCs) for nonlinear polynomial systems. This
+  tool employs sum-of-squares (SOS) optimization programs to
+  systematically search for polynomial-type BCs, while
+  aiming to verify safety properties over four classes of
+  dynamical systems: (i) discrete-time stochastic systems,
+  (ii) discrete-time deterministic systems, (iii)
+  continuous-time stochastic systems, and (iv)
+  continuous-time deterministic systems. PRoTECT is
+  implemented in Python as an application programming
+  interface (API), offering users the flexibility to
+  interact either through its user-friendly graphic user
+  interface (GUI) or via function calls from other Python
+  programs. PRoTECT leverages parallelism across different
+  barrier degrees to efficiently search for a feasible BC.
+keywords:
+  - Barrier certificates
+  - safety verification
+  - sum-of-squares optimization program
+  - nonlinear polynomial systems
+  - stochastic systems
+license: MIT
