@@ -75,7 +75,14 @@ The arXiv version of the related paper will be published to arXiv imminently and
 
 ### Citing PRoTECT
 ```
-To appear imminently
+@misc{wooding2024protect,
+      title={PRoTECT: Parallelized Construction of Safety Barrier Certificates for Nonlinear Polynomial Systems}, 
+      author={Ben Wooding and Viacheslav Horbanov and Abolfazl Lavaei},
+      year={2024},
+      eprint={2404.14804},
+      archivePrefix={arXiv},
+      primaryClass={eess.SY}
+}
 ```
 
 ## Reporting Bugs
