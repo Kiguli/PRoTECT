@@ -4,7 +4,7 @@ import json
 import numpy as np
 import sympy as sp
 
-from src.models.barrier_tool_model import BarrierToolModel, BarrierToolParallelModel
+from src.models.barrier_tool_model import BarrierToolModel
 from src.utils.common import get_np_array_from_string, get_expression_from_string
 from src.utils.exceptions import BarrierNotFoundError, ExpressionFromStringError, RequiredParameterMissingError
 from src.utils.noise_type import NoiseType
@@ -32,16 +32,18 @@ class BarrierToolPresenter:
         self.view.import_config_button_clicked.connect(self.__import_config)
         self.view.export_config_button_clicked.connect(self.__export_config)
 
+        # Connect signal from the model
+        self.model.result_computed.connect(self.__update_results)
+
     def show(self):
         self.view.show()
 
     def __set_parallel(self, parallel: bool | int):
         parallel = (parallel is True or parallel > 0)
+        self.model.set_parallel(parallel)
         if parallel:
-            self.model = BarrierToolParallelModel()
             logger.info("Parallelization activated.")
         else:
-            self.model = BarrierToolModel()
             logger.info("Parallelization deactivated.")
 
     def __update_system_mode(self):
@@ -312,17 +314,17 @@ class BarrierToolPresenter:
             self.view.show_parameters_warning()
             return
 
-        else:
-            result: dict = self.model.retrieve_result()
-            if result is not None:
-                if result.get('barrier') is not None:
-                    logger.info("Results:\n" + str(result))
-                    self.view.update_result(result)
-                elif result.get('error'):
-                    self.view.show_warning(f"Barrier not found: {result['error']}")
-                else:
-                    self.view.show_warning("Unexpected error occurred!")
-                    print(result)
+    def __update_results(self):
+        result: dict = self.model.retrieve_result()
+        if result is not None:
+            if result.get('barrier') is not None:
+                logger.info("Results:\n" + str(result))
+                self.view.update_result(result)
+            elif result.get('error'):
+                self.view.show_warning(f"Barrier not found: {result['error']}")
+            else:
+                self.view.show_warning("Unexpected error occurred!")
+                print(result)
 
     @staticmethod
     def __save_dict_to_json(dictionary, file_path):

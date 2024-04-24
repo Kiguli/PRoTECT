@@ -2,7 +2,7 @@ import logging
 import sys
 from PyQt6.QtWidgets import QApplication
 
-from src.models.barrier_tool_model import BarrierToolModel, BarrierToolParallelModel
+from src.models.barrier_tool_model import BarrierToolModel
 from src.presenters.barrier_tool_presenter import BarrierToolPresenter
 from src.views.barrier_tool_view import BarrierToolView
 
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     app = QApplication(sys.argv)
 
-    model = BarrierToolParallelModel()
+    model = BarrierToolModel(parallel=True)
     view = BarrierToolView()
     presenter = BarrierToolPresenter(model, view)
 
