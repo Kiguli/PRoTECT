@@ -66,7 +66,7 @@ Two 2D continuous-time deterministic systems with Linear (left) and Nonlinear (r
 
 ## Related Paper
 
-The arXiv version of the related paper is located [here](https://arxiv.org/abs/2404.14804).
+The arXiv version of the paper is located [here](https://arxiv.org/abs/2404.14804).
 
 ### Authors
 - [Ben Wooding](https://woodingben.com)
