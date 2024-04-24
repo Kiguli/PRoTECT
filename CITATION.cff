@@ -13,7 +13,7 @@ authors:
 title: "PRoTECT: Parallelized Construction of Safety Barrier Certificates for Nonlinear Polynomial Systems"
 version: 1.0
 doi: 10.48550/arXiv.2404.14804
-date-released: 2024-04-023
+date-released: 2024-04-23
 url: "https://github.com/Kiguli/PRoTECT/"
 preferred-citation:
   type: article
