@@ -1,5 +1,7 @@
 # PRoTECT
 
+[![DOI](https://zenodo.org/badge/788965518.svg)](https://zenodo.org/doi/10.5281/zenodo.11085376)[![CC BY 4.0][cc-by-shield]][cc-by]
+
 <p align="center">
 <img src="./figs/JetEngine.png" alt="Example 1 - 2D Jet engine system (continuous-time deterministic system)" width="400"/>
 <img src="./figs/VDP2.png" alt="Example 2 - 2D Jet engine system (continuous-time deterministic system)" width="400"/>
@@ -89,4 +91,11 @@ The arXiv version of the paper is located [here](https://arxiv.org/abs/2404.1480
 If you encounter any issues or have feedback, please open an issue in the repository. We appreciate your input and will address it as soon as possible.
 
 ## License
-This project is licensed under the [MIT License](./LICENSE) see the file for details.
+This work is licensed under a
+[Creative Commons Attribution 4.0 International License][cc-by].
+
+[![CC BY 4.0][cc-by-image]][cc-by]
+
+[cc-by]: http://creativecommons.org/licenses/by/4.0/
+[cc-by-image]: https://i.creativecommons.org/l/by/4.0/88x31.png
+[cc-by-shield]: https://img.shields.io/badge/License-CC%20BY%204.0-lightgrey.svg
