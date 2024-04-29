@@ -13,11 +13,11 @@ class DCMotor2(control.DynamicalModel):
 
     def f_torch(self, v):
         x1, x2 = v[:, 0], v[:, 1]
-        return [x1 + tau*(-R/L*x1 - Kdc/L*x2), x2 + tau*(Kdc/J*x1 - b/J*x2)]
+        return [x1 + self.tau*(-self.R/self.L*x1 - self.Kdc/self.L*x2), x2 + self.tau*(self.Kdc/self.J*x1 - self.b/self.J*x2)]
 
     def f_smt(self, v):
         x1, x2 = v
-        return [x1 + tau*(-R/L*x1 - Kdc/L*x2), x2 + tau*(Kdc/J*x1 - b/J*x2)]
+        return [x1 + self.tau*(-self.R/self.L*x1 - self.Kdc/self.L*x2), x2 + self.tau*(self.Kdc/self.J*x1 - self.b/self.J*x2)]
 
 class Jet2(control.DynamicalModel):
     n_vars = 2
