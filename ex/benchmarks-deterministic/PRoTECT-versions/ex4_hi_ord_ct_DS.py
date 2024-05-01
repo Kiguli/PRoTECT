@@ -64,10 +64,10 @@ if __name__ == '__main__':
     start = time.time()
     
     ### Uncomment this line to run the parallel implementation
-    result = parallel_ct_DS(max_degree_values, **fixed_params)
+    #result = parallel_ct_DS(max_degree_values, **fixed_params)
     
     ### Uncomment this line to run the serial implementation
-    #result = ct_DS(single_degree_values, **fixed_params)
+    result = ct_DS(single_degree_values, **fixed_params)
     
     
     end = time.time()

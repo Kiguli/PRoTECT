@@ -67,10 +67,10 @@ if __name__ == '__main__':
     start = time.time()
     
     ### Uncomment this line to run the parallel implementation
-    result = parallel_dt_DS(max_b_degree, **fixed_params)
+    #result = parallel_dt_DS(max_b_degree, **fixed_params)
     
     ### Uncomment this line to run the serial implementation
-    #result = dt_DS(single_run_b_degree, **fixed_params)
+    result = dt_DS(single_run_b_degree, **fixed_params)
     
     end = time.time()
     print("elapsed time:", end-start)
