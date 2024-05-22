@@ -1,6 +1,6 @@
 cd ..
 sudo apt-get update
-sudo apt-get install -y python3 python3-pip findutils sed
+sudo apt-get install -y python3 python3-pip findutils sed libxcb-cursor0
 pip install -r requirements.txt
 
 cd ~
