@@ -14,7 +14,7 @@ a feasible BC. Additionally, PRoTECT employs sum-of-squares (SOS) optimization p
 We have provided Youtube tutorial videos to help understand how to use PRoTECT [here](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-).
 
 ## Table of Contents
-- [Artifact Evaluation](#Artifact Evaluation)
+- [Artifact Evaluation](#Artifact-Evaluation)
 - [Installation](#installation)
 - [Examples](#examples)
 - [Related Paper](#related-paper)
