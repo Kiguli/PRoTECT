@@ -5,10 +5,7 @@ pip install -r requirements.txt
 
 cd ~
 
-# Get the current user's home directory
-home_directory=$(eval echo ~)
-
-echo "export PYTHONPATH=$PYTHONPATH:${home_directory}/PRoTECT:${home_directory}/fossil-main" >> .profile
-echo "export PYTHONPATH=$PYTHONPATH:${home_directory}/PRoTECT:${home_directory}/fossil-main" >> .bashrc
+echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .profile
+echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .bashrc
 
 mkdir mosek

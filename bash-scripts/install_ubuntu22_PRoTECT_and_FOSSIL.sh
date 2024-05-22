@@ -1,10 +1,9 @@
 cd ..
-cp fossil-main.zip ..
- rm fossil-main.zip
+mv fossil-main ..
 
 # Install dependencies
 apt-get update
-apt-get install -y python3 python3-pip curl nano unzip findutils sed
+apt-get install -y python3 python3-pip curl nano unzip findutils sed libxcb-cursor0
 
 # Unzip and clean up
 cd ..
@@ -32,10 +31,7 @@ pip3 install .
 
 cd ~
 
-# Get the current user's home directory
-home_directory=$(eval echo ~)
-
-echo "export PYTHONPATH=$PYTHONPATH:${home_directory}/PRoTECT:${home_directory}/fossil-main" >> .profile
-echo "export PYTHONPATH=$PYTHONPATH:${home_directory}/PRoTECT:${home_directory}/fossil-main" >> .bashrc
+echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .profile
+echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .bashrc
 
 mkdir mosek
