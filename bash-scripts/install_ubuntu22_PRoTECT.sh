@@ -1,6 +1,6 @@
 cd ..
-apt-get update
-apt-get install -y python3 python3-pip findutils sed
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip findutils sed
 pip install -r requirements.txt
 
 cd ~

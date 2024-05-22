@@ -2,18 +2,11 @@ cd ..
 mv fossil-main ..
 
 # Install dependencies
-apt-get update
-apt-get install -y python3 python3-pip curl nano unzip findutils sed libxcb-cursor0
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip curl nano unzip findutils sed libxcb-cursor0
 
 # Unzip and clean up
 cd ..
-unzip fossil-main.zip
-
-# Get the current user's username
-current_user=$(whoami)
-
-# Change ownership of fossil-main directory and its contents
-chown -R $current_user:$current_user fossil-main
 
 # Append models.py content
 cat ~/PRoTECT/ex/benchmarks-deterministic/FOSSIL-versions/models.py >> ~/fossil-main/experiments/benchmarks/models.py
