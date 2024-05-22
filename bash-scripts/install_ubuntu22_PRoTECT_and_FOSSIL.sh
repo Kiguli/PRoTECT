@@ -16,7 +16,7 @@ cd PRoTECT
 pip install -r requirements.txt
 
 # Install prerequisites for dreal4
-curl -fsSL 'https://raw.githubusercontent.com/dreal/dreal4/master/setup/ubuntu/22.04/install_prereqs.sh' | bash
+curl -fsSL 'https://raw.githubusercontent.com/dreal/dreal4/master/setup/ubuntu/22.04/install_prereqs.sh' | sudo bash
 
 # Install fossil-main
 cd ../fossil-main
