@@ -13,7 +13,7 @@ cat ~/PRoTECT/ex/benchmarks-deterministic/FOSSIL-versions/models.py >> ~/fossil-
 
 # Install PRoTECT dependencies
 cd PRoTECT
-pip install -r requirements.txt
+pip install --no-index --find-links="dependencies" -r requirements.txt
 
 # Install prerequisites for dreal4
 curl -fsSL 'https://raw.githubusercontent.com/dreal/dreal4/master/setup/ubuntu/22.04/install_prereqs.sh' | sudo bash

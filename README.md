@@ -40,7 +40,7 @@ If using Ubuntu, we have provided an installation script that automatically inst
 
 `./install_ubuntu22_PRoTECT.sh`
 
-It is also easy to install the tool manually. We assume the user has python3 and pip installed on their machine. To install necessary dependencies, run from the directory containing the repository: <br><br>`pip install -r requirements.txt`
+It is also easy to install the tool manually. We assume the user has python3 and pip installed on their machine. To install necessary dependencies, run from the directory containing the repository: <br><br>`pip install --no-index --find-links="dependencies" -r requirements.txt`
 
 To use PRoTECT via its GUI, simply navigate a terminal to the current folder and then run `python3 main.py`. You can import pre-configured examples into the GUI from the folder [GUI_config_files](./ex/GUI_config_files/) by clicking the button *Import Config*. You can also run the examples for the [deterministic](./ex/benchmarks-deterministic/PRoTECT-versions/) and [stochastic](./ex/benchmarks-stochastic/) systems from the respective folders with `python3 <example-name>.py` (You may also need to temporarily add PRoTECT to your PATH using `export PYTHONPATH=/<path-to-PRoTECT>/PRoTECT:$PYTHONPATH` before running the examples this way, or permanently add it to your PATH by appending `export PYTHONPATH=$PYTHONPATH:/<path-to-PRoTECT>/PRoTECT` to the end of the file `~/.profile`, or equivalent, and restarting your computer). Helpful information about which files to adjust for your specific machine to edit the PYTHONPATH can be found [here](https://stackoverflow.com/questions/3402168/permanently-add-a-directory-to-pythonpath?newreg=2db2ca3b38664e6cbc6121ba55522f63).
 
