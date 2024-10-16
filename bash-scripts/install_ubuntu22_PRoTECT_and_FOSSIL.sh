@@ -27,4 +27,7 @@ cd ~
 echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .profile
 echo 'export PYTHONPATH=$PYTHONPATH:$HOME/PRoTECT:$HOME/fossil-main' >> .bashrc
 
+source ~/.bashrc
+source ~/.profile
+
 mkdir mosek

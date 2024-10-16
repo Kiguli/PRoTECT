@@ -10,45 +10,47 @@ from src.functions.dt_SS import dt_SS
 
 if __name__ == '__main__':
 
-    dim = 2  # dimension of state space
-
+    dim = 1  # dimension of state space
+    
     # Initial set
-    L_initial = np.array([-5,-5])
-    U_initial = np.array([5,5])
+    L_initial = np.array([19.5])
+    U_initial = np.array([20])
 
     # Unsafe set1
-    L_unsafe1 = np.array([-7,-7])
-    U_unsafe1 = np.array([-6,-6])
-    
-    # Unsafe set2
-    L_unsafe2 = np.array([6,6])
-    U_unsafe2 = np.array([7,7])
+    L_unsafe1 = np.array([1])
+    U_unsafe1 = np.array([17])
+
+    # Unsafe set1
+    L_unsafe2 = np.array([23])
+    U_unsafe2 = np.array([50])
 
     # combine unsafe regions
-    L_unsafe = np.array([L_unsafe1,L_unsafe2])
-    U_unsafe = np.array([U_unsafe1,U_unsafe2])
+    L_unsafe = np.array([L_unsafe1, L_unsafe2])
+    U_unsafe = np.array([U_unsafe1, U_unsafe2])
 
     # State space
-    L_space = np.array([-7,-7])
-    U_space = np.array([7,7])
+    L_space = np.array([1])
+    U_space = np.array([50])
 
     # ========================= Symbolic Variables =========================
     x = sp.symbols(f'x0:{dim}')  # Create x1, x2, ..., x_degree symbols
     varsigma = sp.symbols(f'varsigma0:{dim}')
     # ========================= Dynamics =========================
+    beta = 0.06
+    teta = 0.145
+    Te = -15
+    Th = 45
+    R = 0.1
 
-    #noise term
-    NoiseType = "uniform"
-    a = np.array([-0.02,-0.02])
-    b = np.array([0.02, 0.02])
-    
-    tau = 0.1
-    
-    f1 = x[0] + tau*x[1] + varsigma[0]
-    f2 = x[1] + (-x[0] + (1-x[0]**2)*x[1])*tau + varsigma[1]
-    
+    nu = -0.0120155 * x[0] + 0.8
+    f1 = (1 - beta - teta * nu) * x[0] + teta * Th * nu + beta * Te + R * varsigma[0]
+
     # Define the vector field
-    f = np.array([f1,f2])
+    f = np.array([f1])
+
+    #noise terms
+    NoiseType = "exponential"
+    rate = [1]
     
     #time horizon
     t = 5
@@ -66,26 +68,26 @@ if __name__ == '__main__':
         'f': f,
         't': t,
         'noise_type': NoiseType,
-        'optimize': False,
+        'optimize': True,
         'solver': "mosek",
         'confidence': None,
         'gam': None,
-        'lam': None,
+        'lam': 10,
         'c_val': None,
         'sigma': None,
-        'mean' : None,
-        'rate': None,
-        'a': a,
-        'b': b,
+        'mean':None,
+        'rate': rate,
+        'a': None,
+        'b': None,
         # Add other fixed parameters here
     }
 
     # List of degree values
-    max_degree_value = 6
+    degree = 4
     start = time.time()
     
-    ### Uncomment this line to run the parallel implementation
-    result = parallel_dt_SS(max_degree_value, **fixed_params)
+    ### Run the parallel implementation
+    result = dt_SS(degree, **fixed_params)
     
     end = time.time()
     print("elapsed time:", end-start)

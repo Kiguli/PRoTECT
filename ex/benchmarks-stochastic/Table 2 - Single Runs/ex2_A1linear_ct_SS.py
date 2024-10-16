@@ -10,45 +10,39 @@ from src.functions.ct_SS import ct_SS
 
 if __name__ == '__main__':
 
-    dim = 1  # dimension of state space
+    dim = 2  # dimension of state space
 
     # Initial set
-    L_initial = np.array([19.5])
-    U_initial = np.array([20])
+    L_initial = np.array([-0.25,2.75])
+    U_initial = np.array([0.25,3.25])
 
     # Unsafe set
-    L_unsafe1 = np.array([1])
-    U_unsafe1 = np.array([17])
-    L_unsafe2 = np.array([23])
-    U_unsafe2 = np.array([50])
+    L_unsafe1 = np.array([-3,-1.5])
+    U_unsafe1 = np.array([3,-1])
 
     # combine unsafe regions
-    L_unsafe = np.array([L_unsafe1, L_unsafe2])
-    U_unsafe = np.array([U_unsafe1, U_unsafe2])
+    L_unsafe = np.array([L_unsafe1])
+    U_unsafe = np.array([U_unsafe1])
 
     # State space
-    L_space = np.array([1])
-    U_space = np.array([50])
+    L_space = np.array([-3,-1.5])
+    U_space = np.array([3,3.5])
 
-    #noise terms
-    delta = np.array([0.1]);  # diffusion term (for brownian part)
-    rho = np.array([0.1]);  # reset term (for poisson distribution)
-    p_rate = np.array([0.1]); # poisson rate
-    
     # ========================= Symbolic Variables =========================
     x = sp.symbols(f'x1:{dim + 1}')  # Create x1, x2, ..., x_degree symbols
     # ========================= Dynamics =========================
-    eta = 0.005  # Conduction factor between the rooms i+1/i-1 and the room i
-    beta = 0.06  # Conduction factor between the external environment and the room i
-    teta = 0.156  # Conduction factor between the heater and the room i
-    Te = -15  # Outside temperature
-    Th = 48  # Heater temperature
-
-    f1 = (-2 * eta * x[0] - beta * x[0] - teta * (-0.0120155 * x[0] ** 2 + 0.7 * x[0])) + teta * Th * ( -0.0120155 * x[0] + 0.7) + beta * Te;
+    
+    #noise terms
+    delta = np.array([0,0.5*x[1]])  # diffusion term (for brownian motion)
+    rho = np.array([0,0]) # reset term (for poisson process)
+    p_rate = np.array([0,0]) # poisson rates
+    
+    f1 = -5*x[0] -4*x[1]
+    f2 = -1*x[0] -2*x[1]
 
     # Define the vector field
-    f = np.array([f1])
-
+    f = np.array([f1,f2])
+    
     #time horizon
     t = 5
 
@@ -66,22 +60,22 @@ if __name__ == '__main__':
         'rho': rho,
         'p_rate': p_rate,
         't': t,
-        'optimize': False,
+        'optimize': True,
         'solver': "mosek",
         'confidence': None,
         'gam': None,
-        'lam': None,
+        'lam': 10,
         'c_val': None,
         'l_degree':None,
         # Add other fixed parameters here
     }
 
     # List of degree values
-    max_degree_value = 6
+    degree = 4
     start = time.time()
     
-    ### Run the parallel implementation
-    result = parallel_ct_SS(max_degree_value, **fixed_params)
+    ### Uncomment this line to run the parallel implementation
+    result = ct_SS(degree, **fixed_params)
     
     end = time.time()
     print("elapsed time:", end-start)

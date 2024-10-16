@@ -59,11 +59,11 @@ if __name__ == '__main__':
         'rho': rho,
         'p_rate': p_rate,
         't': t,
-        'optimize': False,
+        'optimize': True,
         'solver': "mosek",
         'confidence': None,
         'gam': None,
-        'lam': None,
+        'lam': 10,
         'c_val': None,
         'l_degree':None,
         # Add other fixed parameters here

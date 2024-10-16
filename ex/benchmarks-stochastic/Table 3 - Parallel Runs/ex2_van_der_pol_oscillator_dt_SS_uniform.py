@@ -13,37 +13,39 @@ if __name__ == '__main__':
     dim = 2  # dimension of state space
 
     # Initial set
-    L_initial = np.array([1.75,1.75])
-    U_initial = np.array([2.25,2.25])
+    L_initial = np.array([-5,-5])
+    U_initial = np.array([5,5])
 
     # Unsafe set1
-    L_unsafe1 = np.array([9,9])
-    U_unsafe1 = np.array([10,10])
+    L_unsafe1 = np.array([-7,-7])
+    U_unsafe1 = np.array([-6,-6])
+    
+    # Unsafe set2
+    L_unsafe2 = np.array([6,6])
+    U_unsafe2 = np.array([7,7])
 
     # combine unsafe regions
-    L_unsafe = np.array([L_unsafe1])
-    U_unsafe = np.array([U_unsafe1])
+    L_unsafe = np.array([L_unsafe1,L_unsafe2])
+    U_unsafe = np.array([U_unsafe1,U_unsafe2])
 
     # State space
-    L_space = np.array([1,1])
-    U_space = np.array([10,10])
+    L_space = np.array([-7,-7])
+    U_space = np.array([7,7])
 
     # ========================= Symbolic Variables =========================
     x = sp.symbols(f'x0:{dim}')  # Create x1, x2, ..., x_degree symbols
     varsigma = sp.symbols(f'varsigma0:{dim}')
-    print(x)
-    print(varsigma)
     # ========================= Dynamics =========================
-    
-    #noise terms
-    NoiseType = "normal"
-    sigma = np.array([0.01, 0.01])
-    mean = np.array([0,0])
+
+    #noise term
+    NoiseType = "uniform"
+    a = np.array([-0.02,-0.02])
+    b = np.array([0.02, 0.02])
     
     tau = 0.1
     
-    f1 = (1-tau)*x[0] + 4.5*tau + varsigma[0]
-    f2 = tau*x[0] + (1-tau)*x[1] -3*tau + varsigma[1]
+    f1 = x[0] + tau*x[1] + varsigma[0]
+    f2 = x[1] + (-x[0] + (1-x[0]**2)*x[1])*tau + varsigma[1]
     
     # Define the vector field
     f = np.array([f1,f2])
@@ -64,17 +66,17 @@ if __name__ == '__main__':
         'f': f,
         't': t,
         'noise_type': NoiseType,
-        'optimize': False,
+        'optimize': True,
         'solver': "mosek",
         'confidence': None,
         'gam': None,
-        'lam': None,
+        'lam': 1000,
         'c_val': None,
-        'sigma': sigma,
-        'mean' : mean,
+        'sigma': None,
+        'mean' : None,
         'rate': None,
-        'a': None,
-        'b': None,
+        'a': a,
+        'b': b,
         # Add other fixed parameters here
     }
 

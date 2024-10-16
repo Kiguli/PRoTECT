@@ -13,34 +13,36 @@ if __name__ == '__main__':
     dim = 2  # dimension of state space
 
     # Initial set
-    L_initial = np.array([-1,-1])
-    U_initial = np.array([1,1])
+    L_initial = np.array([-0.25,2.75])
+    U_initial = np.array([0.25,3.25])
 
     # Unsafe set
-    L_unsafe1 = np.array([-3,2.25])
-    U_unsafe1 = np.array([3,3])
+    L_unsafe1 = np.array([-3,-1.5])
+    U_unsafe1 = np.array([3,-1])
 
     # combine unsafe regions
     L_unsafe = np.array([L_unsafe1])
     U_unsafe = np.array([U_unsafe1])
 
     # State space
-    L_space = np.array([-3,-3])
-    U_space = np.array([3,3])
+    L_space = np.array([-3,-1.5])
+    U_space = np.array([3,3.5])
 
-    #noise terms
-    delta = np.array([0,0.5])  # diffusion term (for brownian part)
-    rho = np.array([0,0]) # reset term (poisson process)
-    p_rate = np.array([0,0]) # poisson rate
     # ========================= Symbolic Variables =========================
     x = sp.symbols(f'x1:{dim + 1}')  # Create x1, x2, ..., x_degree symbols
     # ========================= Dynamics =========================
-    f1 = x[1]
-    f2 = -x[0] -x[1] -0.5*x[0]**3
+    
+    #noise terms
+    delta = np.array([0,0.5*x[1]])  # diffusion term (for brownian motion)
+    rho = np.array([0,0]) # reset term (for poisson process)
+    p_rate = np.array([0,0]) # poisson rates
+    
+    f1 = -5*x[0] -4*x[1]
+    f2 = -1*x[0] -2*x[1]
 
     # Define the vector field
     f = np.array([f1,f2])
-
+    
     #time horizon
     t = 5
 
@@ -58,11 +60,11 @@ if __name__ == '__main__':
         'rho': rho,
         'p_rate': p_rate,
         't': t,
-        'optimize': False,
+        'optimize': True,
         'solver': "mosek",
         'confidence': None,
         'gam': None,
-        'lam': None,
+        'lam': 10,
         'c_val': None,
         'l_degree':None,
         # Add other fixed parameters here
