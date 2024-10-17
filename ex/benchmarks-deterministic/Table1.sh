@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Directories containing Python files
-PYTHON_DIR="PRoTECT-versions"
-FOSSIL_DIR="FOSSIL-versions"
+PYTHON_DIR="./PRoTECT-versions"
+FOSSIL_DIR="./FOSSIL-versions"
 
 # Output file for the table
 OUTPUT_FILE="Table1.csv"
