@@ -13,6 +13,8 @@ a feasible BC. Additionally, PRoTECT employs sum-of-squares (SOS) optimization p
 
 We have provided Youtube tutorial videos to help understand how to use PRoTECT [here](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-).
 
+You may experience the automatic installation tools don't work for the latest Python versions, Python 3.10 is known to work and is recommended.
+
 ## Table of Contents
 - [Artifact Evaluation](#Artifact-Evaluation)
 - [Installation](#installation)
@@ -31,6 +33,8 @@ If you are a reviewer for the AE committee, the instructions for how to install 
 to install all necessary dependencies and update the PYTHONPATH, etc. apropriately.
 
 ## Installation
+
+You may experience the automatic installation tools don't work for the latest Python versions, Python 3.10 is known to work and is recommended.
 
 If you choose to use Mosek you will also need a license that can be acquired [here](https://www.mosek.com/license/request/?i=acp) (free for academics).
 
