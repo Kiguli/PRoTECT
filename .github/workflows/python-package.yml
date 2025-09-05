@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -23,10 +22,11 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
+    # Install PyQt6 system dependencies (EGL, XKB, etc.)
     - name: Install system dependencies for PyQt6
       run: |
         sudo apt-get update
-        sudo apt-get install -y libegl-mesa0 libxkbcommon-x11-0 mesa-utils
+        sudo apt-get install -y libxkbcommon-x11-0 libegl-mesa0 mesa-utils
 
     - name: Install Python dependencies
       run: |
@@ -36,11 +36,12 @@ jobs:
 
     - name: Lint with flake8
       run: |
-        # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude fossil-main,ex/benchmarks-deterministic/FOSSIL-versions
-        # exit-zero treats all errors as warnings
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --exclude fossil-main,ex/benchmarks-deterministic/FOSSIL-versions
 
-    - name: Test with pytest
+    - name: Run tests with pytest
+      env:
+        QT_QPA_PLATFORM: offscreen
+        AUTO_CLOSE_GUI: "1"
       run: |
         pytest --ignore=fossil-main --ignore=ex/benchmarks-deterministic/FOSSIL-versions
