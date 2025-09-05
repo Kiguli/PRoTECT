@@ -26,7 +26,7 @@ jobs:
     - name: Install system dependencies for PyQt6
       run: |
         sudo apt-get update
-        sudo apt-get install -y libegl1-mesa libxkbcommon-x11-0
+        sudo apt-get install -y libegl-mesa0 libxkbcommon-x11-0 mesa-utils
 
     - name: Install Python dependencies
       run: |
