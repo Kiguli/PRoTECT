@@ -1,6 +1,6 @@
 # PRoTECT
 
-[![DOI](https://zenodo.org/badge/788965518.svg)](https://zenodo.org/doi/10.5281/zenodo.11085376)[![CC BY 4.0][cc-by-shield]][cc-by]
+[![DOI](https://zenodo.org/badge/788965518.svg)](https://zenodo.org/doi/10.5281/zenodo.11085376)[![CC BY 4.0][cc-by-shield]][cc-by]![Python 3.10](https://github.com/Kiguli/PRoTECT/actions/workflows/python-package.yml/badge.svg?branch=main)
 
 <p align="center">
 <img src="./figs/JetEngine.png" alt="Example 1 - 2D Jet engine system (continuous-time deterministic system)" width="400"/>
