@@ -26,7 +26,7 @@ You may experience the automatic installation tools don't work for the latest Py
 
 ## Artifact Evaluation
 
-If you are a reviewer for the AE committee, the instructions for how to install and reproduce the results of our paper can be found [here](./Artifact_Evaluation_Instructions.pdf). As the tool uses a GUI, we recommend running it on the Virtual Machine provided by the AE Committee that can be found [here on Zenodo](https://zenodo.org/records/10928976), the instructions are partially tailored for this VM. Assuming PRoTECT is installed in the home directory then by navigating to the [bash-scripts](./bash-scripts) folder you can simply run:
+If you are a reviewer for the AE committee, the instructions for how to install and reproduce the results of our paper can be found [here](./Artifact_Evaluation_Instructions.pdf). You may experience the automatic installation tools don't work for the latest Python versions, **Python 3.10 is known to work and is recommended**. As the tool uses a GUI, we recommend running it on the Virtual Machine provided by the AE Committee that can be found [here on Zenodo](https://zenodo.org/records/10928976), the instructions are partially tailored for this VM. Assuming PRoTECT is installed in the home directory then by navigating to the [bash-scripts](./bash-scripts) folder you can simply run:
 
 `./install_ubuntu22_PRoTECT_and_FOSSIL.sh`
 
