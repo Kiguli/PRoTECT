@@ -1,5 +1,9 @@
 import os
 import pytest
+
+# Add the repository root to sys.path so we can import main.py
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from main import launch_app
 
 # Ensure Qt runs in offscreen mode (headless)
