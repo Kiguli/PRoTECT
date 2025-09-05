@@ -1,4 +1,5 @@
 import os
+import sys
 import pytest
 
 # Add the repository root to sys.path so we can import main.py
