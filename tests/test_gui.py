@@ -1,22 +1,12 @@
-import subprocess
-import sys
 import os
+import pytest
+from main import launch_app
 
-def test_main_runs():
-    """Check that main.py launches the GUI and exits without errors."""
+# Ensure Qt runs in offscreen mode (headless)
+os.environ["QT_QPA_PLATFORM"] = "offscreen"
+os.environ["AUTO_CLOSE_GUI"] = "1"  # Auto-close GUI after 1 second
 
-    main_path = os.path.join(os.path.dirname(__file__), "..", "main.py")
-    assert os.path.exists(main_path), f"main.py not found at {main_path}"
-
-    env = os.environ.copy()
-    env["PYTHONPATH"] = os.path.join(os.path.dirname(__file__), "..")
-    env["AUTO_CLOSE_GUI"] = "1"  # auto-close GUI after 1 second
-
-    result = subprocess.run(
-        [sys.executable, main_path],
-        capture_output=True,
-        text=True,
-        env=env
-    )
-
-    assert result.returncode == 0, f"main.py failed with error:\n{result.stderr}"
+def test_main_launches():
+    """Test that main.py GUI launches and exits cleanly."""
+    exit_code = launch_app(auto_close=True)
+    assert exit_code == 0
