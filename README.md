@@ -97,7 +97,7 @@ Two 2D continuous-time deterministic systems with Linear (left) and Nonlinear (r
 
 ## Related Paper
 
-The arXiv version of the paper is located [here](https://arxiv.org/abs/2404.14804).
+The arXiv version of the paper is located [here](https://arxiv.org/abs/2404.14804), the ICCPS 2025 Poster is located [here](https://dl.acm.org/doi/10.1145/3716550.3725152) and the ICTAC 2025 Conference versions is located [here](https://link.springer.com/chapter/10.1007/978-3-032-11176-0_26). The files are also available in this repository.
 
 ### Authors
 - [Ben Wooding](https://woodingben.com)
@@ -106,13 +106,21 @@ The arXiv version of the paper is located [here](https://arxiv.org/abs/2404.1480
 
 ### Citing PRoTECT
 ```
-@misc{wooding2024protect,
-      title={PRoTECT: Parallelized Construction of Safety Barrier Certificates for Nonlinear Polynomial Systems}, 
-      author={Ben Wooding and Viacheslav Horbanov and Abolfazl Lavaei},
-      year={2024},
-      eprint={2404.14804},
-      archivePrefix={arXiv},
-      primaryClass={eess.SY}
+@inproceedings{wooding2025ictac,
+  title={PRoTECT: Parallelized ConstRuction of SafeTy BarriEr Certificates for Nonlinear Polynomial SysTems},
+  author={Wooding, Ben and Horbanov, Viacheslav and Lavaei, Abolfazl},
+  booktitle={International Colloquium on Theoretical Aspects of Computing},
+  pages={448--458},
+  year={2025},
+  organization={Springer}
+}
+
+@inproceedings{wooding2025iccps,
+  title={Protect: Parallel construction of barrier certificates for safety verification of polynomial systems},
+  author={Wooding, Ben and Horbanov, Viacheslav and Lavaei, Abolfazl},
+  booktitle={Proceedings of the ACM/IEEE 16th International Conference on Cyber-Physical Systems (with CPS-IoT Week 2025)},
+  pages={1--2},
+  year={2025}
 }
 ```
 
