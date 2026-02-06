@@ -167,7 +167,9 @@ def dt_SS(b_degree, dim, L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_sp
         return {"error": "Gamma, Lambda, or c value definition issues","b_degree":b_degree}
 
     # ========================= Sub Difference Equations =========================
-    BB = Barrier.subs([(x[i], f[i]) for i in range(len(x))])
+    y = sp.symbols(f'y0:{dim}')
+    BB = Barrier.subs([(x[i], y[i]) for i in range(len(x))])
+    BB = BB.subs([(y[i], f[i]) for i in range(len(y))])
     BB = sp.expand(BB)
 
     for i in range(len(varsigma)):
