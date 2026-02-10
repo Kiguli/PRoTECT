@@ -113,7 +113,9 @@ def dt_DS(b_degree, dim, L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_sp
     # ========================= Sub Difference Equations =========================
 
     # substitute the result of the difference equations
-    Barrier_f = Barrier.subs([(x[i], f[i]) for i in range(len(x))])
+    y = [sp.Dummy(f'y{i}') for i in range(len(x))]
+    Barrier_f = Barrier.subs([(x[i], y[i]) for i in range(len(x))])
+    Barrier_f = Barrier_f.subs([(y[i], f[i]) for i in range(len(y))])
 
     # ========================= Constraints =========================
     try:
