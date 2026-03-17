@@ -127,6 +127,14 @@ If you use PRoTECT in your research, please cite:
      organization={Springer}
    }
 
+   @inproceedings{wooding2025iccps,
+     title={Protect: Parallel construction of barrier certificates for safety verification of polynomial systems},
+     author={Wooding, Ben and Horbanov, Viacheslav and Lavaei, Abolfazl},
+     booktitle={Proceedings of the ACM/IEEE 16th International Conference on Cyber-Physical Systems (with CPS-IoT Week 2025)},
+     pages={1--2},
+     year={2025}
+   }
+
 .. toctree::
    :hidden:
    :caption: Getting Started
