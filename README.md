@@ -16,13 +16,43 @@ We have provided Youtube tutorial videos to help understand how to use PRoTECT [
 You may experience the automatic installation tools don't work for the latest Python versions, Python 3.10 is known to work and is recommended.
 
 ## Table of Contents
+- [What's New in v2](#whats-new-in-v2)
 - [Artifact Evaluation](#Artifact-Evaluation)
 - [Installation](#installation)
 - [Examples](#examples)
+- [ARCH-COMP 2026 NLN Submission](#arch-comp-2026-nln-submission)
 - [Related Paper](#related-paper)
 - [Reporting Bugs](#reporting-bugs)
 - [License](#license)
 - [Youtube Videos about PRoTECT](https://www.youtube.com/playlist?list=PL50OJg3FHS4ctLItbuyT5Hqqn6HQzJ_g-)
+
+## What's New in v2
+
+PRoTECT v2 extends the original tool with several solver-side and modelling
+upgrades, while preserving full backwards compatibility with v1. The v1 entry
+points (`src/functions/ct_DS.py`, `dt_DS.py`, `ct_SS.py`, `dt_SS.py`) are
+unchanged; the new functionality lives in additional modules under
+[`src/functions/`](./src/functions/).
+
+| v2 module | What it adds |
+| --- | --- |
+| `ct_DS_robust.py` | Drop-in replacement for `ct_DS` that searches a barrier `B(x)` valid for **every** parameter `p ∈ [P_lo, P_hi]` via a parameter-box S-procedure on the Lie-derivative SOS constraint. Adds `margin` (enforces `λ - γ ≥ margin` for a verifiable separation gap) and `mosek_tol` (forwards tighter MOSEK feasibility tolerances). |
+| `ct_DS_reach_avoid.py`, `ct_DS_finite_time.py`, `ct_DS_hybrid.py`, `ct_DS_piecewise_sequence.py`, `ct_DS_v2.py` | New encodings for reach-avoid, finite-time-horizon, hybrid-mode, and piecewise-input safety problems. |
+| `ct_SS_subgaussian.py`, `stochastic_ext.py` | Sub-Gaussian-noise barriers and additional stochastic encodings on top of the v1 `ct_SS`. |
+| `solve_helpers.py` | High-level `solve_safety_problem` wrapper: sweeps a degree list with MOSEK first, falls back to CVXOPT only if MOSEK can't produce any barrier. |
+| `sos_validate.py` | Post-solve numerical validator. Cleans MOSEK's Gram matrix (rounding-to-zero + PSD projection), substitutes the post-solve decision-variable values, and reports the residual at MOSEK's true feasibility precision (~10⁻⁸). Distinguishes solver-numerical noise from genuine spec violations. |
+| `relaxations.py`, `sinc_relaxation.py`, `pade.py` | Polynomial relaxations of trigonometric / rational dynamics: `sin(θ) → θ · σ(θ)` with `σ` treated as a robust uncertain parameter, and Padé approximants for non-polynomial transfer functions. |
+| `block_decomp.py`, `sparse_sos.py` | Block / sparse SOS decomposition routines for higher-dimensional barriers. |
+| `dae.py`, `slow_fast.py` | Differential-algebraic and slow-fast system encodings. |
+| `disturbance.py`, `nn_control.py`, `vertex_enumeration.py` | Disturbance handling, neural-network control wrapping, and vertex enumeration on the safe set. |
+| `figure_export.py`, `result_export.py`, `sets.py` | Tikz-friendly figure export, ARCH-COMP-portal-compatible result export, and helper set utilities. |
+
+### Highlights for end users
+
+* **Robust certificates over uncertain parameters.** `ct_DS_robust` lets you give a parameter box `[P_lo, P_hi]` and search for a single barrier valid for the whole box, without lifting parameters into the state.
+* **Numerical health check on every solve.** `sos_validate` post-mortems the Gram matrix and tells you whether MOSEK's certificate is *internally consistent* — it surfaces "the spec is genuinely on the edge of infeasibility" rather than letting you mistake numerical-tolerance noise for a real violation.
+* **Automatic solver fallback.** `solve_safety_problem(degrees, ...)` tries MOSEK across a degree sweep first, and only swaps to CVXOPT if MOSEK can't produce a barrier.
+* **Trigonometric dynamics via sinc.** `sinc_relaxation` converts `sin(θ)` into a polynomial system in `(x, σ)` that the SOS pipeline handles natively.
 
 ## Artifact Evaluation
 
@@ -94,6 +124,35 @@ A discrete-time deterministic system of a two-room temperature system that is ve
 </p>
   
 Two 2D continuous-time deterministic systems with Linear (left) and Nonlinear (right) dynamics are verified over a finite-time horizon with the goal of not reaching the red avoid region with some confidence, see [ex2_A1linear_ct_SS.py](./ex/benchmarks-stochastic/ex2_A1linear_ct_SS.py) and [ex2_nonlinear_ct_SS.py](./ex/benchmarks-stochastic/ex2_nonlinear_ct_SS.py).
+
+## ARCH-COMP 2026 NLN Submission
+
+PRoTECT v2 was submitted to the ARCH-COMP 2026 friendly competition under the
+*Continuous and Hybrid Systems with Nonlinear Dynamics* category. The
+submission runs all 17 (benchmark, instance) pairs from the 2026 NLN suite
+(plus original-spec fall-backs for spec-revised families) and writes the
+canonical `results.csv` consumed by the competition portal verifier.
+
+The submission package and benchmark scripts live under
+[`ex/ARCH-COMP/2026-NLN/`](./ex/ARCH-COMP/2026-NLN/):
+
+```
+ex/ARCH-COMP/2026-NLN/
+├── benchmarks/           # one Python script per (benchmark, instance) pair
+├── run_benchmarks.py     # competition runner; writes results/results.csv
+├── results/              # populated after a run (figures + CSV)
+└── submit/               # Docker image + submit.sh + overlay for the portal
+```
+
+To reproduce the submission locally:
+
+```sh
+cd ex/ARCH-COMP/2026-NLN/submit
+bash submit.sh        # builds Docker image, runs benchmarks, extracts results
+```
+
+See [`ex/ARCH-COMP/2026-NLN/submit/README.md`](./ex/ARCH-COMP/2026-NLN/submit/README.md)
+for the per-benchmark feature matrix and the new-for-2026 vs carried-over breakdown.
 
 ## Related Paper
 

@@ -1,3 +1,13 @@
+# MOSEK license -- never commit (used locally for Docker build context).
+mosek.lic
+*.lic
+
+# Claude Code session memory (user-specific, never commit).
+.claude/
+
+# Built submission archive (regenerate via the packaging script in submit/).
+ex/ARCH-COMP/2026-NLN/submit.zip
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

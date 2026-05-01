@@ -1,0 +1,6 @@
+(set-logic QF_NRA)
+(declare-fun x () Real)
+(assert (and (>= x 0) (<= x 10) (> (* x x) 50)))
+(check-sat)
+(get-model)
+(exit)

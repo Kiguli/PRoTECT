@@ -1,0 +1,9 @@
+# MOSEK license file -- present locally for Docker build, never committed.
+mosek.lic
+*.lic
+
+# Per-run results.
+result/
+
+# Stray macOS metadata.
+.DS_Store
