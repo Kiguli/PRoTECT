@@ -1,0 +1,176 @@
+{
+  "LALO20_W001": {
+    "overall": "timeout-or-unknown",
+    "initial": [
+      "unknown",
+      null,
+      "None",
+      300.14
+    ],
+    "unsafe": [
+      [
+        "unsat",
+        null,
+        "None",
+        0.07
+      ]
+    ],
+    "lie": [
+      "unknown",
+      null,
+      "None",
+      300.65
+    ],
+    "tolerance": 0.001
+  },
+  "LALO20_W005": {
+    "overall": "timeout-or-unknown",
+    "initial": [
+      "unknown",
+      null,
+      "None",
+      341.23
+    ],
+    "unsafe": [
+      [
+        "unsat",
+        null,
+        "None",
+        0.05
+      ]
+    ],
+    "lie": [
+      "unknown",
+      null,
+      "None",
+      300.08
+    ],
+    "tolerance": 0.001
+  },
+  "LALO20_W01": {
+    "overall": "timeout-or-unknown",
+    "initial": [
+      "unknown",
+      null,
+      "None",
+      326.4
+    ],
+    "unsafe": [
+      [
+        "unsat",
+        null,
+        "None",
+        0.08
+      ]
+    ],
+    "lie": [
+      "unknown",
+      null,
+      "None",
+      300.09
+    ],
+    "tolerance": 0.001
+  },
+  "LOVO25": {
+    "overall": "verified",
+    "initial": [
+      "unsat",
+      null,
+      "None",
+      1.83
+    ],
+    "unsafe": [
+      [
+        "unsat",
+        null,
+        "None",
+        1.8
+      ],
+      [
+        "unsat",
+        null,
+        "None",
+        1.79
+      ],
+      [
+        "unsat",
+        null,
+        "None",
+        1.82
+      ],
+      [
+        "unsat",
+        null,
+        "None",
+        1.81
+      ]
+    ],
+    "lie": [
+      "unsat",
+      null,
+      "None",
+      1.76
+    ],
+    "tolerance": 0.001
+  },
+  "CVDP23_finite_time": {
+    "overall": "timeout-or-unknown",
+    "initial": [
+      "unknown",
+      null,
+      "None",
+      120.32
+    ],
+    "unsafe": [
+      [
+        "unknown",
+        null,
+        "None",
+        239.19
+      ],
+      [
+        "unknown",
+        null,
+        "None",
+        120.35
+      ]
+    ],
+    "lie": [
+      "unsat",
+      null,
+      "None",
+      52.24
+    ],
+    "tolerance": 0.001
+  },
+  "CVDP23_finite_time_fixedB1_d2_k2": {
+    "overall": "timeout-or-unknown",
+    "initial": [
+      "unknown",
+      null,
+      "None",
+      120.3
+    ],
+    "unsafe": [
+      [
+        "unknown",
+        null,
+        "None",
+        650.16
+      ],
+      [
+        "unknown",
+        null,
+        "None",
+        151.35
+      ]
+    ],
+    "lie": [
+      "unsat",
+      null,
+      "None",
+      50.5
+    ],
+    "tolerance": 0.001
+  }
+}

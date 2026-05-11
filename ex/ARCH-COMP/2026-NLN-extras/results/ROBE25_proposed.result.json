@@ -1,0 +1,5 @@
+{
+  "b_degree": 2,
+  "error": "lambda not greater than gamma",
+  "variant": "ROBE25_proposed (tightened init eps = 1e-4)"
+}
