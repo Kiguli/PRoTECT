@@ -157,7 +157,7 @@ SPECS.append(_spec(
     L_space=_r(-3.0, -3.0, -3.0, -3.0),
     U_space=_r(3.0, 3.0, 3.0, 3.0),
     title='CVDP23 (b=2, fixed-midpoint reduction)',
-    fig_xlim=(0.8, 1.8), fig_ylim=(2.2, 3.0),
+    fig_xlim=(-3.0, 3.0), fig_ylim=(-3.0, 3.0),
     dynamics=make_cvdp_dyn(mu=1.0, b=2.0),
 ))
 
@@ -174,7 +174,7 @@ SPECS.append(_spec(
     L_space=_r(-3.0, -3.0, -3.0, -3.0),
     U_space=_r(3.0, 3.0, 3.0, 3.0),
     title='CVDP23 (b in [1,3] uncertain; vector field at b=2)',
-    fig_xlim=(0.8, 1.8), fig_ylim=(2.2, 3.0),
+    fig_xlim=(-3.0, 3.0), fig_ylim=(-3.0, 3.0),
     dynamics=make_cvdp_dyn(mu=1.0, b=2.0),
 ))
 
@@ -428,19 +428,26 @@ def render_one(spec):
 
     fig, ax = plt.subplots(figsize=(6.5, 5.5))
 
-    # 1) Vector field: streamlines in grey.
+    # Layering (front to back):
+    #   zorder 8 : barrier level-set lines
+    #   zorder 6 : tied-case yellow band (between brackets)
+    #   zorder 4 : initial set
+    #   zorder 3 : unsafe set boxes
+    #   zorder 1 : vector field (streamlines / quiver)
+    # legend is drawn after all of these and naturally sits on top.
+
+    # 1) Vector field: streamlines in grey, at the very back.
     if FX is not None and FY is not None and np.isfinite(FX).any() and np.isfinite(FY).any():
         speed = np.hypot(FX, FY)
         speed_safe = np.where(speed > 0, speed, 1e-9)
-        # Linewidth modulated lightly by log-speed to highlight fast flow.
         lw = 0.8 + 1.0 * (np.log10(speed_safe) - np.log10(speed_safe.min())) / \
              max(np.log10(speed_safe.max()) - np.log10(speed_safe.min()), 1e-6)
         try:
             ax.streamplot(Xs, Ys, FX, FY, color=STREAM_COLOR, density=1.2,
-                          linewidth=lw, arrowsize=1.0)
+                          linewidth=lw, arrowsize=1.0, zorder=1)
         except Exception:
-            # streamplot occasionally fails on degenerate fields; fall back to quiver.
-            ax.quiver(Xs, Ys, FX, FY, color=STREAM_COLOR, alpha=0.6, scale=None)
+            ax.quiver(Xs, Ys, FX, FY, color=STREAM_COLOR, alpha=0.6,
+                      scale=None, zorder=1)
 
     # 2) Barrier level sets gamma and lambda (two dividing lines).
     # SOS validator residuals can push B(x_init) slightly above the reported
@@ -455,35 +462,11 @@ def render_one(spec):
     rel = abs(lam - gamma) / max(abs(gamma), abs(lam), 1.0)
     tied = rel < 0.05
 
-    if not tied:
-        plot_gamma  = max(gamma, B_at_init)
-        plot_lambda = lam
-        cs_g = ax.contour(X, Y, Zb, levels=[plot_gamma],
-                          colors=[GREEN_LINE], linewidths=2.6, zorder=7)
-        cs_l = ax.contour(X, Y, Zb, levels=[plot_lambda],
-                          colors=[RED_LINE], linewidths=2.6, zorder=7)
-    else:
-        # Certificate has gamma ~ lambda: one effective dividing curve.
-        # Draw it at B(init_midpoint) (guaranteed visible) and shade a thin
-        # band around it labelled as the certificate level.
-        band = max(0.01 * (Zmax - Zmin), 1e-3 * abs(B_at_init))
-        # Two contour lines symmetric about B_at_init, but capped to within
-        # the data range so both actually get drawn.
-        lo = max(Zmin + 1e-6, B_at_init - 0.5 * band)
-        hi = min(Zmax - 1e-6, B_at_init + 0.5 * band)
-        # Always include at least the data-min-+ tick so green has something.
-        plot_gamma  = lo if lo > Zmin else B_at_init
-        plot_lambda = hi if hi > plot_gamma else B_at_init + band
-        # Filled band between the two levels for visual cue.
-        ax.contourf(X, Y, Zb, levels=[plot_gamma, plot_lambda],
-                    colors=['#fde2a4'], alpha=0.5, zorder=4)
-        cs_g = ax.contour(X, Y, Zb, levels=[plot_gamma],
-                          colors=[GREEN_LINE], linewidths=2.4, zorder=7)
-        cs_l = ax.contour(X, Y, Zb, levels=[plot_lambda],
-                          colors=[RED_LINE], linewidths=2.4,
-                          linestyles='--', zorder=7)
+    # Note: actual ax.contour() calls below are deferred until *after* the
+    # initial / unsafe rectangles so the level-set lines paint on top of
+    # them (per the requested z-order).
 
-    # 3) Initial set.
+    # 3) Initial set (zorder 4, above unsafe at 3).
     L0, U0 = np.asarray(spec.L_initial, float), np.asarray(spec.U_initial, float)
     w0 = U0[spec.dim_x] - L0[spec.dim_x]
     h0 = U0[spec.dim_y] - L0[spec.dim_y]
@@ -496,7 +479,7 @@ def render_one(spec):
     else:
         y0 = L0[spec.dim_y]
     ax.add_patch(Rectangle((x0, y0), w0, h0, edgecolor=INIT_EDGE,
-                           facecolor=INIT_FILL, linewidth=2.0, zorder=10))
+                           facecolor=INIT_FILL, linewidth=2.0, zorder=4))
 
     # 4) Unsafe boxes. Only draw a box if the slice's orthogonal
     #    coordinates actually fall inside the box: otherwise the box
@@ -520,7 +503,32 @@ def render_one(spec):
             continue
         ax.add_patch(Rectangle((Lu[spec.dim_x], Lu[spec.dim_y]), wu, hu,
                                edgecolor=UNSAFE_EDGE, facecolor=UNSAFE_FILL,
-                               alpha=0.85, linewidth=1.5, zorder=8))
+                               alpha=0.85, linewidth=1.5, zorder=3))
+
+    # 4b) Barrier level-set lines drawn LAST so they paint on top of the
+    # initial and unsafe rectangles.
+    if not tied:
+        plot_gamma  = max(gamma, B_at_init)
+        plot_lambda = lam
+        ax.contour(X, Y, Zb, levels=[plot_gamma],
+                   colors=[GREEN_LINE], linewidths=2.6, zorder=8)
+        ax.contour(X, Y, Zb, levels=[plot_lambda],
+                   colors=[RED_LINE], linewidths=2.6, zorder=8)
+    else:
+        band = max(0.01 * (Zmax - Zmin), 1e-3 * abs(B_at_init))
+        lo = max(Zmin + 1e-6, B_at_init - 0.5 * band)
+        hi = min(Zmax - 1e-6, B_at_init + 0.5 * band)
+        plot_gamma  = lo if lo > Zmin else B_at_init
+        plot_lambda = hi if hi > plot_gamma else B_at_init + band
+        # Yellow band between brackets sits above unsafe (3) and init (4)
+        # but below the contour lines (8) so the bracket lines stay crisp.
+        ax.contourf(X, Y, Zb, levels=[plot_gamma, plot_lambda],
+                    colors=['#fde2a4'], alpha=0.55, zorder=6)
+        ax.contour(X, Y, Zb, levels=[plot_gamma],
+                   colors=[GREEN_LINE], linewidths=2.4, zorder=8)
+        ax.contour(X, Y, Zb, levels=[plot_lambda],
+                   colors=[RED_LINE], linewidths=2.4,
+                   linestyles='--', zorder=8)
 
     # 5) Legend.
     if tied:
@@ -547,8 +555,10 @@ def render_one(spec):
                       edgecolor=UNSAFE_EDGE, alpha=0.85,
                       label=r'unsafe set $X_u$'),
     ]
-    ax.legend(handles=proxies, loc='best', fontsize=8.5, framealpha=0.92,
-              handlelength=2.2)
+    leg = ax.legend(handles=proxies, loc='best', fontsize=8.5,
+                    framealpha=0.95, handlelength=2.2)
+    # Ensure the legend frame sits on top of everything else.
+    leg.set_zorder(20)
 
     ax.set_xlim(xlim); ax.set_ylim(ylim)
     ax.set_xlabel(f'${spec.var_names[spec.dim_x]}$', fontsize=11)
