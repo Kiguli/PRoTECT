@@ -101,3 +101,57 @@ def solve_safety_problem(
     last['solver'] = 'cvxopt'
     last['solve_time_total'] = cumulative_solve_time
     return last, 'cvxopt'
+
+
+def solve_finite_time_safety_problem(
+    degrees, time_orders, T_horizon,
+    x, f,
+    L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
+    p_syms=(), P_lo=(), P_hi=(),
+    margin=0.0, mosek_tol=None, validate_tolerance=0.1,
+):
+    """Finite-horizon analogue of solve_safety_problem.
+
+    Tries MOSEK across the full (degree x time_order) sweep first; falls back
+    to CVXOPT only if MOSEK couldn't produce a barrier at any
+    (degree, time_orders) combination. Returns (result_dict, solver_used).
+    The result dict matches solve_safety_problem's, with extra keys
+    'T_horizon' and 'time_orders'."""
+    from .ct_DS_finite_time import ct_DS_finite_time
+
+    last = None
+    cumulative_solve_time = 0.0
+    if isinstance(time_orders, int):
+        time_orders_list = [time_orders]
+    else:
+        time_orders_list = list(time_orders)
+
+    for solver in ('mosek', 'cvxopt'):
+        for degree in degrees:
+            for k_order in time_orders_list:
+                kw = dict(
+                    b_degree=degree, time_orders=k_order, T_horizon=T_horizon,
+                    dim=len(x),
+                    L_initial=L_initial, U_initial=U_initial,
+                    L_unsafe=L_unsafe, U_unsafe=U_unsafe,
+                    L_space=L_space,   U_space=U_space,
+                    x=x, f=f, p_syms=p_syms, P_lo=P_lo, P_hi=P_hi,
+                    margin=margin, solver=solver,
+                    validate_sos=True,
+                    validate_tolerance=validate_tolerance,
+                )
+                if solver == 'mosek' and mosek_tol is not None:
+                    kw['mosek_tol'] = mosek_tol
+                result = ct_DS_finite_time(**kw)
+                cumulative_solve_time += result.get('solve_time', 0.0) \
+                                         if result else 0.0
+                last = result
+                if result and 'barrier' in result and 'error' not in result:
+                    result['solver'] = solver
+                    result['solve_time_total'] = cumulative_solve_time
+                    return result, solver
+    if last is None:
+        last = {}
+    last['solver'] = 'cvxopt'
+    last['solve_time_total'] = cumulative_solve_time
+    return last, 'cvxopt'
