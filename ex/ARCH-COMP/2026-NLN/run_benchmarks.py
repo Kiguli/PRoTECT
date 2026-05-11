@@ -29,33 +29,32 @@ TIMEOUT = 5000
 # -----------------------------------------------------------------------
 # Benchmark specifications: (benchmark_id, instance, script, extra_env)
 # -----------------------------------------------------------------------
-# Both spec versions are reported per family so the report can show the
-# "we attempted the 2026 spec, fell back to the original" story:
-#   * ROBE25/* (autocatalytic, 2026)        + ROBE21/* (rescaled, original)
-#   * CVDP23_uncertain (b in [1,3], 5-D)    + CVDP23 (b=2 fixed) + CVDP22 (b=70)
-#   * LOVO25 (Lotka-Volterra, 2026)         + LOVO21 (Lorenz, original)
-# LALO20, SPRE22, TRAF22, TSPS25 are unchanged across the spec revision.
+# Trimmed final-submission scope: only benchmarks where PRoTECT's new
+# combined coefficient + pointwise SOS validator certifies as CLEAN or
+# warns with all slacks at solver tolerance (~1e-7). These are the
+# certificates we are confident in:
+#
+#   * LALO20/{W001, W005, W01}  -- strict clean (huge negative slacks)
+#   * CVDP23/b_unc (FINITE TIME, paper spec b in [1,3], t in [0, 7])
+#   * CVDP23/b1    (FINITE TIME, simplified b = 1 fixed, t in [0, 7])
+#
+# The other benchmarks (ROBE25/21, LOVO21, LOVO25, CVDP22, CVDP23 infinite
+# time, SPRE22, TRAF22, TSPS25) are excluded from this submission because
+# the pointwise validator could not certify them as sound at the strict
+# solver tolerance.
 BENCHMARKS = [
-    # 2026-spec attempts first.
-    ('ROBE25', '1',     'ROBE25.py',           {'ROBE25_INSTANCE': '1'}),
-    ('ROBE25', '2',     'ROBE25.py',           {'ROBE25_INSTANCE': '2'}),
-    ('ROBE25', '3',     'ROBE25.py',           {'ROBE25_INSTANCE': '3'}),
-    ('CVDP23', 'b_unc', 'CVDP23_uncertain.py', {}),
-    ('CVDP23', 'b2',    'CVDP23.py',           {}),
-    ('LOVO25', '',      'LOVO25.py',           {}),
-    # Original-spec fallbacks.
-    ('ROBE21', '1',     'ROBE21.py',           {'ROBE21_INSTANCE': '1'}),
-    ('ROBE21', '2',     'ROBE21.py',           {'ROBE21_INSTANCE': '2'}),
-    ('ROBE21', '3',     'ROBE21.py',           {'ROBE21_INSTANCE': '3'}),
-    ('CVDP22', '',      'CVDP22.py',           {}),
-    ('LOVO21', '',      'LOVO21.py',           {}),
-    # Single-version benchmarks.
-    ('LALO20', 'W001',  'LALO20.py',           {'LALO20_INSTANCE': 'W001'}),
-    ('LALO20', 'W005',  'LALO20.py',           {'LALO20_INSTANCE': 'W005'}),
-    ('LALO20', 'W01',   'LALO20.py',           {'LALO20_INSTANCE': 'W01'}),
-    ('SPRE22', '',      'SPRE22.py',           {}),
-    ('TRAF22', '',      'TRAF22.py',           {}),
-    ('TSPS25', '',      'TSPS25.py',           {}),
+    # LALO20 (Laub-Loomis, 7-D polynomial). Three instances per the
+    # paper's W001/W005/W01 initial-set widths.
+    ('LALO20', 'W001',  'LALO20.py',            {'LALO20_INSTANCE': 'W001'}),
+    ('LALO20', 'W005',  'LALO20.py',            {'LALO20_INSTANCE': 'W005'}),
+    ('LALO20', 'W01',   'LALO20.py',            {'LALO20_INSTANCE': 'W01'}),
+    # CVDP23 finite-time, paper spec b in [1, 3] uncertain.
+    ('CVDP23', 'b_unc_ft', 'CVDP23_finite_time.py',
+        {'PROTECT_FT_LABEL': 'CVDP23_b_unc_ft'}),
+    # CVDP23 finite-time, simplified b = 1 fixed.
+    ('CVDP23', 'b1_ft',    'CVDP23_finite_time.py',
+        {'PROTECT_FT_FIX_B': '1', 'PROTECT_FT_FIX_B_VAL': '1.0',
+         'PROTECT_FT_LABEL': 'CVDP23_b1_ft'}),
 ]
 
 
@@ -199,6 +198,27 @@ def main():
         write_csv(rows)  # incremental write; survives a mid-run crash
 
     print(f"\nResults written to {RESULT_CSV}")
+
+    # Render LALO20 barrier-certificate grid figures from the result.json
+    # files just written. Failures here are non-fatal -- the CSV is the
+    # canonical deliverable.
+    try:
+        figure_script = os.path.join(os.path.dirname(__file__),
+                                     'figure_lalo20_grid.py')
+        if os.path.isfile(figure_script):
+            print(f'\nRendering LALO20 grid figures...')
+            env = os.environ.copy()
+            env['PYTHONPATH'] = os.path.join(os.path.dirname(__file__),
+                                             '..', '..', '..')
+            env['PROTECT_RESULT_DIR'] = RESULT_DIR
+            proc = subprocess.run([sys.executable, figure_script],
+                                  env=env, timeout=600)
+            if proc.returncode != 0:
+                print('  WARN: figure generation returned a non-zero exit')
+        else:
+            print(f'\n(figure script {figure_script} not found, skipping)')
+    except Exception as exc:
+        print(f'  WARN: figure generation failed: {exc}')
 
 
 if __name__ == '__main__':

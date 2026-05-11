@@ -64,7 +64,8 @@ def ct_DS_robust(
     margin=0.0,
     mosek_tol=None,
     validate_sos=False,
-    validate_tolerance=1e-4,
+    validate_tolerance=1e-8,
+    maximize_separation=False,
 ):
     result = {'b_degree': b_degree}
 
@@ -162,6 +163,19 @@ def ct_DS_robust(
                 raise Exception(
                     "User defined lambda - gamma is below the requested margin!")
 
+        # If requested, set an objective to MAXIMIZE the separation
+        # lambda - gamma. Without this, MOSEK just finds the cheapest
+        # feasible (gamma, lambda) pair which can leave them numerically
+        # coincident -- visually indistinguishable in a barrier-figure
+        # render. The maximisation is bounded by the SOS constraints
+        # (B <= gamma on X_0, B >= lambda on X_u) given a finite barrier.
+        if maximize_separation and gam is None and lam is None:
+            prob.set_objective('max', lv - gv)
+        elif maximize_separation and gam is None:
+            prob.set_objective('min', gv)
+        elif maximize_separation and lam is None:
+            prob.set_objective('max', lv)
+
     except Exception:
         return {'error': 'Gamma or Lambda definition issues', 'b_degree': b_degree}
 
@@ -240,7 +254,17 @@ def ct_DS_robust(
         len(first_condition.get_sos_decomp()) > 0 and
         len(second_condition.get_sos_decomp()) > 0 and
         len(last_condition.get_sos_decomp()) > 0):
-        result['barrier'] = sum(barrier_constraint.get_sos_decomp())
+        # Save with FULL coefficient precision rather than the default
+        # 3 d.p. rounding from get_sos_decomp() -- the rounding is fine
+        # for well-scaled benchmarks but loses ~10^-3 of every coefficient,
+        # which after multiplying by stiff dynamics (1e7 in ROBE25/3) and
+        # large basis values at the state-space boundary causes the saved
+        # barrier to violate Lie <= 0 by orders of magnitude. precision=20
+        # asks `round_sympy_expr` for 20 d.p., effectively no rounding.
+        try:
+            result['barrier'] = sum(barrier_constraint.get_sos_decomp(precision=20))
+        except Exception:
+            result['barrier'] = sum(barrier_constraint.get_sos_decomp())
     else:
         return {'error': 'constraints are not sum of squares'}
 
@@ -262,7 +286,8 @@ def ct_DS_robust(
 
     # --- post-solve numerical validation -------------------------------
     if validate_sos:
-        from .sos_validate import validate_problem
+        from .sos_validate import (validate_problem, pointwise_validate,
+                                   pointwise_verdict)
         named = [
             ('init',
              first_condition,
@@ -286,6 +311,60 @@ def ct_DS_robust(
         }
         result['sos_status'] = v['status']
         result['sos_overall'] = v['overall']
+
+        # ---- POINTWISE check on the closed asserted boxes ----
+        # Coefficient-space residuals (above) measure the SOS
+        # decomposition's faithfulness to the asserted polynomial; they
+        # do NOT detect S-procedure-multiplier absorption that allows
+        # B(x) < lambda inside X_u at solver tolerance. The pointwise
+        # check below samples the boxes directly and evaluates B (and
+        # the Lie derivative across parameter samples) at corners +
+        # interior points. The combined verdict 'overall' below is
+        # PASS only if BOTH the coefficient check and the pointwise
+        # check pass.
+        try:
+            B_saved = result.get('barrier', Barrier)
+            unsafe_pairs = list(zip(L_unsafe, U_unsafe))
+            # Build parameter samples across the box (midpoint + corners)
+            # when the system has parameters.
+            if len(p_syms):
+                import numpy as _np, itertools as _it
+                p_lo = _np.asarray(P_lo, float); p_hi = _np.asarray(P_hi, float)
+                p_mid = 0.5 * (p_lo + p_hi)
+                p_samples = [tuple(p_mid)]
+                for bits in _it.product([0, 1], repeat=len(p_syms)):
+                    p_samples.append(tuple(
+                        p_lo[i] if b == 0 else p_hi[i] for i, b in enumerate(bits)
+                    ))
+            else:
+                p_samples = []
+            pw = pointwise_validate(
+                B_saved, list(x), result['gamma'], result['lambda'],
+                L_initial, U_initial, unsafe_pairs, L_space, U_space,
+                dynamics_exprs=list(f),
+                p_syms=list(p_syms), p_samples=p_samples,
+            )
+            verdict = pointwise_verdict(pw, tolerance=validate_tolerance)
+            result['pointwise'] = {
+                'init_slack':          pw['init_slack'],
+                'unsafe_slack':        pw['unsafe_slack'],
+                'lie_slack':           pw['lie_slack'],
+                'init_worst_point':    pw['init_worst_point'],
+                'unsafe_worst_point':  pw['unsafe_worst_point'],
+                'lie_worst_point':     pw['lie_worst_point'],
+                'verdict':             verdict,
+            }
+            # Combined overall verdict: certificate is reported clean only
+            # if BOTH coefficient and pointwise checks pass.
+            old_overall = result['sos_overall']
+            if old_overall == 'clean' and verdict == 'pass':
+                result['sos_overall'] = 'clean'
+            elif old_overall in ('clean', 'warning') and verdict == 'warn':
+                result['sos_overall'] = 'warning'
+            else:
+                result['sos_overall'] = 'fail'
+        except Exception as exc:
+            result['pointwise'] = {'error': f'pointwise eval failed: {exc}'}
         # NOTE: validation failure no longer sets `error`. The barrier is
         # accepted; sos_overall ('clean'/'warning'/'fail') and the
         # residuals are reported separately so the runner / CSV can flag

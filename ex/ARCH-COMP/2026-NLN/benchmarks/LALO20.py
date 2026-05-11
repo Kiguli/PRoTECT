@@ -81,13 +81,16 @@ if __name__ == '__main__':
     f7 = 1.8*x[5] - 1.5*x[1]*x[6]
     f = np.array([f1, f2, f3, f4, f5, f6, f7])
     start = time.time()
+    # One-shot at degree 2 (the working degree -- higher degrees just
+    # add SOS complexity without improving the certificate's pointwise
+    # slack for this benchmark).
     result, solver_used = solve_safety_problem(
-        degrees=range(2, 7, 2),
+        degrees=[2],
         x=x, f=f,
         L_initial=L_initial, U_initial=U_initial,
         L_unsafe=L_unsafe,   U_unsafe=U_unsafe,
         L_space=L_space,     U_space=U_space,
-        validate_tolerance=1e-3,
+        validate_tolerance=1e-8,
     )
     if result:
         result['solver'] = solver_used

@@ -56,7 +56,7 @@ def ct_DS_finite_time(
     mosek_tol=None,
     gam=None, lam=None, l_degree=None,
     validate_sos=False,
-    validate_tolerance=1e-4,
+    validate_tolerance=1e-8,
     dim=None,
 ):
     """
@@ -274,7 +274,13 @@ def ct_DS_finite_time(
         and last_unsafe is not None
         and len(last_unsafe.get_sos_decomp()) > 0
         and len(last_condition.get_sos_decomp()) > 0):
-        result['barrier'] = sum(barrier_constraint.get_sos_decomp())
+        # Save with FULL coefficient precision (precision=20 effectively
+        # disables get_sos_decomp's default 3 d.p. rounding, which causes
+        # stiff-coefficient certificates to fail pointwise verification).
+        try:
+            result['barrier'] = sum(barrier_constraint.get_sos_decomp(precision=20))
+        except Exception:
+            result['barrier'] = sum(barrier_constraint.get_sos_decomp())
     else:
         return {'error': 'constraints not SOS',
                 'b_degree': b_degree, 'time_orders': time_orders}
@@ -292,7 +298,8 @@ def ct_DS_finite_time(
 
     # --- post-solve numerical validation -------------------------------
     if validate_sos:
-        from .sos_validate import validate_problem
+        from .sos_validate import (validate_problem, pointwise_validate,
+                                   pointwise_verdict)
         named = [
             ('init',
              first_condition,
@@ -323,5 +330,75 @@ def ct_DS_finite_time(
         }
         result['sos_status']  = v['status']
         result['sos_overall'] = v['overall']
+
+        # ---- POINTWISE check (see ct_DS_robust for rationale) ----
+        # For finite-time, sample B(x, t) at multiple t values in [0, T]
+        # for the init check (since B at init means B(x, 0) <= gamma).
+        # For the unsafe check, sample (x, t) with t in [0, T].
+        try:
+            B_saved = result.get('barrier', Barrier)
+            # Build per-time-slice barriers for the init / unsafe checks.
+            B_init = sp.sympify(B_saved).subs(time_sym, 0)
+            # For the unsafe / Lie check across t, sample t in [0, T].
+            import numpy as _np
+            T_val = float(T_horizon)
+            t_samples = _np.linspace(0.0, T_val, 9)
+            # Pointwise on the init condition at t=0 only.
+            unsafe_pairs = list(zip(L_unsafe, U_unsafe))
+            # Build parameter samples.
+            if len(p_syms):
+                import itertools as _it
+                p_lo = _np.asarray(P_lo, float); p_hi = _np.asarray(P_hi, float)
+                p_mid = 0.5 * (p_lo + p_hi)
+                p_samples = [tuple(p_mid)]
+                for bits in _it.product([0, 1], repeat=len(p_syms)):
+                    p_samples.append(tuple(
+                        p_lo[i] if bi == 0 else p_hi[i] for i, bi in enumerate(bits)
+                    ))
+            else:
+                p_samples = []
+            # Aggregate worst-case across t for unsafe and Lie checks.
+            agg_init   = pointwise_validate(
+                B_init, list(x), result['gamma'], result['lambda'],
+                L_initial, U_initial, unsafe_pairs, L_space, U_space,
+                dynamics_exprs=None,
+                p_syms=list(p_syms), p_samples=p_samples)
+            sup_B_init = agg_init['sup_B_init']
+            inf_B_unsafe = +_np.inf
+            sup_lie_overall = -_np.inf
+            for tv in t_samples:
+                B_t = sp.sympify(B_saved).subs(time_sym, float(tv))
+                f_t = [sp.sympify(fi) for fi in f]   # f doesn't depend on t
+                pw_t = pointwise_validate(
+                    B_t, list(x), result['gamma'], result['lambda'],
+                    L_initial, U_initial, unsafe_pairs, L_space, U_space,
+                    dynamics_exprs=f_t,
+                    p_syms=list(p_syms), p_samples=p_samples)
+                if pw_t['inf_B_unsafe'] < inf_B_unsafe:
+                    inf_B_unsafe = pw_t['inf_B_unsafe']
+                if pw_t['sup_Lie'] is not None and pw_t['sup_Lie'] > sup_lie_overall:
+                    sup_lie_overall = pw_t['sup_Lie']
+            init_slack   = sup_B_init - result['gamma']
+            unsafe_slack = result['lambda'] - inf_B_unsafe
+            lie_slack    = (sup_lie_overall if _np.isfinite(sup_lie_overall) else 0.0)
+            worst = max(init_slack, unsafe_slack, lie_slack)
+            verdict = ('pass' if worst <= validate_tolerance
+                       else 'warn' if worst <= 100 * validate_tolerance
+                       else 'fail')
+            result['pointwise'] = {
+                'init_slack': init_slack,
+                'unsafe_slack': unsafe_slack,
+                'lie_slack': lie_slack,
+                'verdict': verdict,
+            }
+            old = result['sos_overall']
+            if old == 'clean' and verdict == 'pass':
+                result['sos_overall'] = 'clean'
+            elif old in ('clean', 'warning') and verdict == 'warn':
+                result['sos_overall'] = 'warning'
+            else:
+                result['sos_overall'] = 'fail'
+        except Exception as exc:
+            result['pointwise'] = {'error': f'pointwise eval failed: {exc}'}
 
     return result

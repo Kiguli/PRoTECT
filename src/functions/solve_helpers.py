@@ -55,7 +55,7 @@ def solve_safety_problem(
     degrees, x, f,
     L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
     p_syms=(), P_lo=(), P_hi=(),
-    margin=0.0, mosek_tol=None, validate_tolerance=0.1,
+    margin=0.0, mosek_tol=None, validate_tolerance=1e-8,
 ):
     """Try MOSEK across the full degree sweep first. Only fall back to
     CVXOPT (across the same degree sweep) if MOSEK couldn't produce a
@@ -108,7 +108,7 @@ def solve_finite_time_safety_problem(
     x, f,
     L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
     p_syms=(), P_lo=(), P_hi=(),
-    margin=0.0, mosek_tol=None, validate_tolerance=0.1,
+    margin=0.0, mosek_tol=None, validate_tolerance=1e-8,
 ):
     """Finite-horizon analogue of solve_safety_problem.
 

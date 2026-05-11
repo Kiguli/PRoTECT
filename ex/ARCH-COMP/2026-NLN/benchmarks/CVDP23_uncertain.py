@@ -64,8 +64,8 @@ if __name__ == '__main__':
         L_initial=L_initial, U_initial=U_initial,
         L_unsafe=L_unsafe,   U_unsafe=U_unsafe,
         L_space=L_space,     U_space=U_space,
-        validate_tolerance=1e-3,
-    p_syms=p, P_lo=P_lo, P_hi=P_hi,
+        validate_tolerance=1e-8,
+        p_syms=p, P_lo=P_lo, P_hi=P_hi,
     )
     if result:
         result['solver'] = solver_used

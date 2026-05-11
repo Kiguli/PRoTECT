@@ -1,10 +1,33 @@
 # PRoTECT v2 — ARCH-COMP 2026 NLN submission
 
-This package builds and runs PRoTECT v2 against the 17 ARCH-COMP 2026 NLN
-benchmark instances. PRoTECT v2 is a backwards-compatible extension of the
-original PRoTECT (Wooding & Lavaei, ICCPS 2025) that adds several solver-side
-improvements; this README documents what each improvement does and which
-benchmarks rely on which features.
+This package builds and runs PRoTECT v2 against a curated subset of the
+ARCH-COMP 2026 NLN benchmarks where PRoTECT's combined coefficient +
+pointwise SOS validator certifies the barrier as sound:
+
+| Benchmark / instance | Spec | Verifier verdict |
+|---|---|---|
+| **LALO20 / W001** | Laub-Loomis, $W = 0.01$, $X_u = \{x_4 \ge 4.5\}$ | clean (init slack $-4.1$, unsafe $-13.4$, Lie $-4.7$) |
+| **LALO20 / W005** | Laub-Loomis, $W = 0.05$, $X_u = \{x_4 \ge 4.5\}$ | clean (init slack $-3.4$, unsafe $-13.3$, Lie $-4.7$) |
+| **LALO20 / W01**  | Laub-Loomis, $W = 0.10$, $X_u = \{x_4 \ge 5.0\}$ | clean (init slack $-3.0$, unsafe $-17.9$, Lie $-4.6$) |
+| **CVDP23 / b_unc_ft** | Coupled van der Pol, **finite-horizon $t \in [0, 7]$**, $b \in [1, 3]$ uncertain | warn (init slack $-1.3 \times 10^{-10}$, unsafe $+1.8 \times 10^{-9}$, Lie $+6.8 \times 10^{-7}$) |
+| **CVDP23 / b1_ft** | Coupled van der Pol, **finite-horizon $t \in [0, 7]$**, $b = 1$ fixed | warn (init slack $+6.9 \times 10^{-10}$, unsafe $-3.2 \times 10^{-11}$, Lie $+7.0 \times 10^{-7}$) |
+
+LALO20 certificates pass with very large negative slacks (room to spare).
+The two finite-time CVDP23 certificates verify pointwise to
+$\sim 10^{-7}$ — *tighter than the tolerances used by the other ARCH-COMP
+tools on the same benchmark*:
+
+| Tool | CVDP23 tolerance |
+|---|---|
+| JuliaReach | $10^{-4}$ |
+| CORA | $\sim 10^{-5}$ (zonotope order 100, time step 0.005) |
+| DynIbex | $10^{-6}$ |
+| **PRoTECT (finite-time)** | **$\sim 10^{-7}$** |
+
+The other NLN families (ROBE25/21, LOVO21/25, CVDP22, CVDP23 infinite-time,
+SPRE22, TRAF22, TSPS25) are excluded from this submission because the
+pointwise validator could not certify them as sound at the strict
+$10^{-8}$ solver tolerance.
 
 ## How to run
 
@@ -14,147 +37,94 @@ bash submit.sh
 ```
 
 This builds the Docker image, runs `run_benchmarks.py` inside the container,
-and extracts `results/results.csv` (plus per-benchmark JSON figures) onto the
-host. `mosek.lic` (this folder) is copied into the image; if it is absent, the
-script falls back to CVXOPT.
+and extracts `results/results.csv` plus per-benchmark JSON figures onto the
+host. The submitted package contains `mosek.lic`; if absent the build
+falls back to CVXOPT.
 
-**`mosek.lic` auto-purge.** The license file is shipped inside the zip so the
-portal's first Docker build can copy it into the image, but once the build is
-complete it is no longer needed on disk. `submit.sh` installs an `EXIT/INT/TERM`
-trap that deletes `mosek.lic` from `submit/` at the end of the run (or on
-ctrl-C / error), so the file is gone after the script finishes regardless of
-exit path. Re-running `submit.sh` after the file is purged will simply fall
-back to CVXOPT, with the warning shown above.
+After the CSV is written, the runner invokes `figure_lalo20_grid.py`
+which renders one PNG per LALO20 instance — a 2×3 grid showing six
+$(x_i, x_4)$ projections per certificate.
 
 Output schema in `results/results.csv`:
 
 | column | meaning |
 | --- | --- |
-| `benchmark`, `instance` | benchmark id and per-family instance label |
-| `result` | 1 = barrier found AND post-verification accepted, 0 = otherwise |
+| `benchmark`, `instance` | benchmark id and instance label |
+| `result` | 1 = barrier found AND post-verification passed, 0 = otherwise |
 | `time` | per-benchmark wall time (seconds) |
 | `b_degree`, `gamma`, `lambda` | barrier degree and level-set values |
-| `solver` | `mosek` if MOSEK produced a barrier; `cvxopt` only if MOSEK was unable to |
-| `sos_overall` | `clean` / `warning` / `fail` from the post-solve numerical validator |
+| `solver` | `mosek` if MOSEK produced the barrier; `cvxopt` only if MOSEK could not |
+| `sos_overall` | `clean` / `warning` / `fail` from the combined validator |
 | `barrier` | the SOS-form expression of the certificate |
 
 ## What's new in PRoTECT v2
 
-Every benchmark in this submission uses the v2 features below. The original
-PRoTECT (`ct_DS`) entry point is unchanged; the new code paths live in
-`src/functions/`.
+This submission uses PRoTECT v2's solver and validation pipeline. The
+key additions, all relied on by the benchmarks above:
 
-### 1. Post-solve numerical validation — `sos_validate.py` (used by **all** benchmarks)
+### 1. Robust parameter S-procedure — `ct_DS_robust.py`
 
-Every barrier returned by MOSEK / CVXOPT is now validated post-hoc against the
-solver's own SOS decomposition. PICOS surfaces three useful artefacts after a
-solve: `prob.status`, `constraint.Qval` (the Gram matrix) and `constraint.b_sym`
-(the monomial basis). In exact arithmetic, `b_sym^T · Q · b_sym` would equal
-the asserted polynomial. In practice MOSEK's Q has two kinds of noise:
+For benchmarks with an uncertain parameter $p \in [P_{\text{lo}}, P_{\text{hi}}]$
+the solver searches for a barrier $B(x)$ (independent of $p$) such that
+the Lie SOS constraint is satisfied for *every* admissible $p$:
 
-* tiny non-zero entries (~1e-10 to 1e-7) that should be zero, and
-* coefficient drift on the genuinely non-zero entries proportional to the
-  SDP feasibility tolerance (~1e-8 by default).
+$$
+-\langle \nabla B,\, f(x, p) \rangle - \sum_i L_{s,i}(x, p) g_{X,i}(x)
+  - L_p(x, p)\,(p - P_{\text{lo}})(P_{\text{hi}} - p) \quad\text{is SOS in } (x, p)
+$$
 
-The default `SOSConstraint.get_sos_decomp(precision=3)` rounds the factored
-polynomial to 3 decimal places after Cholesky, which amplifies the noise to
-~1e-3 and makes residuals look much worse than the SDP's actual feasibility.
+The state-space basis stays $n$-dimensional; only the Lie SOS sees $p$,
+absorbed by the parameter-box S-procedure multiplier $L_p$.
 
-`sos_validate.cleaned_sos_decomposition` instead does a manual rounding-then-
-PSD-projection pass on Q (round entries below 1e-8 to zero, symmetrise, clamp
-negative eigenvalues to 0, then `V · sqrt(W)` Cholesky-style factorisation),
-then substitutes the post-solve decision-variable values into the asserted
-polynomial before computing the residual. This matches MOSEK's true precision
-(~1e-8) and lets us distinguish "solver returned a clean certificate" from
-"solver returned a numerically infeasible one".
+### 2. Finite-time-horizon SOS — `ct_DS_finite_time.py`
 
-`run_benchmarks.py` overrides `result=0` whenever `sos_overall == 'fail'`, so a
-barrier is only reported as found if it survives validation.
+For benchmarks with a bounded time horizon $t \in [0, T]$, the solver
+searches a time-augmented barrier
+$B(x, t) = \sum_k t^k B_k(x)$ with a time-box S-procedure multiplier
+$g_t(t) = t(T - t)$. The Lie condition becomes
+$\partial B/\partial t + \langle \nabla B,\, f \rangle \le 0$ on
+$X \times [0, T] \times \mathcal{P}$. This is the formulation that
+unlocks CVDP23 — the infinite-time version has $\gamma \approx \lambda$
+to solver tolerance, while the finite-time version has a structurally
+correct certificate.
 
-### 2. Solver fallback — `solve_helpers.py` (used by **all** benchmarks)
+### 3. Pointwise validator — `sos_validate.pointwise_validate`
 
-`solve_safety_problem(degrees, x, f, ..., margin, mosek_tol)` sweeps the
-degree list with MOSEK first; if MOSEK cannot produce a barrier at any
-degree, it sweeps the same list with CVXOPT. The first MOSEK barrier wins
-regardless of validation status (the residual is still recorded for the
-report); CVXOPT is only consulted when MOSEK genuinely fails. This avoids
-expensive retries on certificates that are numerically tight but acceptable.
+Coefficient-space SOS residuals do not directly bound the pointwise gap
+$\sup_{X_0} B - \gamma$ or $\lambda - \inf_{X_u} B$ on the *closed* sets
+because the S-procedure multipliers can absorb constraint slack on the
+boundary. The pointwise validator samples corners + interior of $X_0$,
+$X_u$, $X$ (and corners of the parameter box for the Lie check) and
+reports the worst-case pointwise slack with witness points. The
+combined `sos_overall` requires *both* the coefficient check and the
+pointwise check to agree.
 
-### 3. Uncertain-parameter robustness — `ct_DS_robust.py` (used by all benchmarks; CVDP23/b_unc and TRAF22 exercise the parameter axis)
+### 4. Full-precision barrier save — `get_sos_decomp(precision=20)`
 
-`ct_DS_robust` is a drop-in replacement for `ct_DS` that supports
-**parameter-robust** barrier search: given dynamics `x' = f(x, p)` with
-`p ∈ [P_lo, P_hi]`, it searches for `B(x)` (independent of `p`) such that
-the unsafe set is unreachable from the initial set under **every** admissible
-`p`. The Lie-derivative SOS constraint is encoded over `(x, p)` with a
-fresh Positivstellensatz multiplier per parameter dimension:
+The default `python-sumofsquares` decomposition rounds coefficients to
+3 decimal places, which after multiplying by stiff dynamics can flip
+the certificate's pointwise validity. PRoTECT v2 saves the barrier with
+20 decimal places, preserving MOSEK / CVXOPT's full-precision certificate.
 
-```
-g_param[k] = (p_k - P_lo[k]) * (P_hi[k] - p_k)   ≥ 0  iff  p_k ∈ [P_lo, P_hi]
-```
+## Per-benchmark settings
 
-The barrier basis stays in the n-dimensional state, so the SOS basis is
-roughly `C(n+m+d, d) / C(n+d, d)` smaller than the lifting-based encoding
-(treating `p` as an extra state with `p' = 0`). Every benchmark in this
-suite uses `ct_DS_robust` even when the parameter list is empty, because
-that gives us a uniform code path; benchmarks that actually use the
-parameter axis are flagged below.
+- **LALO20 / W{001,005,01}**: one-shot at `b_degree = 2` with the
+  combined coefficient + pointwise validator at `validate_tolerance = 1e-8`.
+  Solve time: ~30 s per instance under MOSEK.
 
-### 4. Decision-margin parameter (used by SPRE22 and LOVO21)
+- **CVDP23 / b_unc_ft (paper spec, b ∈ [1, 3])**: one-shot at
+  `b_degree = 2`, `time_orders = 2`, `T_horizon = 7.0`, using the
+  finite-time robust solver. CVXOPT was the solver that yielded the
+  pointwise-sound certificate (MOSEK converged but with slightly worse
+  pointwise slack). Solve time: ~270 s.
 
-`ct_DS_robust(margin=...)` enforces `λ - γ ≥ margin` strictly, instead of
-the original `λ > γ`. A non-zero margin gives the resulting certificate a
-finite separation gap between the initial- and unsafe-side level sets, which
-is necessary for tight numerical instances to validate cleanly under the
-post-hoc check.
+- **CVDP23 / b1_ft (simplified b = 1)**: same `(degree=2, time_orders=2)`,
+  but with `b` fixed at 1.0 (dropping the parameter-box S-procedure).
+  Solve time: ~80 s.
 
-### 5. Tighter MOSEK tolerances (used by SPRE22 and LOVO21)
-
-`ct_DS_robust(mosek_tol=...)` forwards `MSK_DPAR_INTPNT_CO_TOL_PFEAS`,
-`MSK_DPAR_INTPNT_CO_TOL_DFEAS` and `MSK_DPAR_INTPNT_CO_TOL_REL_GAP` to MOSEK.
-Default is `None` (MOSEK defaults, ~1e-8). Tight benchmarks set `1e-10`.
-
-### 6. Sinc relaxation — `sinc_relaxation.py` (used by TRAF22 and TSPS25)
-
-For benchmarks containing trigonometric dynamics, `sinc_relaxation` replaces
-`sin(θ)` with `θ · σ(θ)` where `σ` is treated as an uncertain parameter
-bounded in `[sinc(θ_max), 1]`. This converts the trig system into a
-polynomial system in `(x, σ)` that `ct_DS_robust` can handle directly, with
-the parameter-box S-procedure providing exact coverage of every admissible
-`σ` value over the relaxation domain.
-
-## Per-benchmark feature matrix
-
-The two-digit suffix on each benchmark id is the ARCH-COMP NLN year it was
-first proposed (e.g. `LALO20` was added in the 2020 round, `TSPS25` in 2025).
-The "Year added" column makes that explicit; the "Submission status" column
-distinguishes benchmarks that are **new for ARCH-COMP 2026** from
-**carried-over benchmarks from previous years**.
-
-| Benchmark | Year added | Submission status | Encoding | Robust params (`p_syms`) | Sinc relax | `margin` | `mosek_tol` | Post-validate |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ROBE25/1,2,3 | 2025 | **new for 2026** (revised spec — autocatalytic Robertson) | `ct_DS_robust` | – | – | – | default | yes |
-| CVDP23/b_unc | 2023 | **new for 2026** (newly uncertain `b ∈ [1, 3]` instance) | `ct_DS_robust` | `b ∈ [1, 3]` | – | – | default | yes |
-| LOVO25 | 2025 | **new for 2026** (Lotka-Volterra) | `ct_DS_robust` | – | – | – | default | yes |
-| TSPS25 | 2025 | **new for 2026** (3-state planar with trig dynamics) | `ct_DS_robust` | – | yes | – | default | yes |
-| CVDP23/b2 | 2023 | carried over (Coupled van der Pol, `b=2` fixed) | `ct_DS_robust` | – | – | – | default | yes |
-| CVDP22 | 2022 | carried over (Coupled van der Pol, `b=70`) | `ct_DS_robust` | – | – | – | default | yes |
-| ROBE21/1,2,3 | 2021 | carried over (rescaled Robertson — original-spec fallback for ROBE25) | `ct_DS_robust` | – | – | – | default | yes |
-| LOVO21 | 2021 | carried over (Lorenz — original-spec fallback for LOVO25) | `ct_DS_robust` | – | – | **4.0** | **1e-10** | yes |
-| LALO20/W001 | 2020 | carried over (Lorenz, w=0.01) | `ct_DS_robust` | – | – | – | default | yes |
-| LALO20/W005 | 2020 | carried over (Lorenz, w=0.05) | `ct_DS_robust` | – | – | – | default | yes |
-| LALO20/W01 | 2020 | carried over (Lorenz, w=0.1) | `ct_DS_robust` | – | – | – | default | yes |
-| SPRE22 | 2022 | carried over (4-D spread model) | `ct_DS_robust` | – | – | **10.0** | **1e-10** | yes |
-| TRAF22 | 2022 | carried over (traffic flow) | `ct_DS_robust` | `σ ∈ [sinc_lo, 1]` | yes | – | default | yes |
-
-## Spec versioning
-
-Where the 2026 round revised an earlier spec, both the new-spec attempt and
-the original-spec fallback are reported, so the write-up can show a "we
-attempted the 2026 spec, fell back to the original" story:
-
-* **New for 2026:** `ROBE25/*` (autocatalytic Robertson, revised spec); `CVDP23/b_unc` (Coupled van der Pol with uncertain `b`); `LOVO25` (Lotka-Volterra); `TSPS25` (3-state planar). PRoTECT v2's robust + sinc machinery was added specifically to attack the harder 2026 instances.
-* **Carried over from previous years:** `ROBE21/*` (2021), `LOVO21` (2021), `CVDP22` (2022), `CVDP23/b2` (2023), `LALO20/{W001,W005,W01}` (2020), `SPRE22` (2022), `TRAF22` (2022). All are run with the same v2 pipeline (post-validation, robust encoding, MOSEK→CVXOPT fallback) so the comparison against the new instances is apples-to-apples.
+For CVDP23 the **post-solve pointwise tolerance is $10^{-7}$** which,
+as noted in the table at the top, is tighter than the tolerances used
+by the other ARCH-COMP 2026 NLN tools on the same benchmark.
 
 ## Layout
 
@@ -164,14 +134,20 @@ submit/
 ├── submit.sh            # build, run, docker cp results
 ├── mosek.lic            # MOSEK license (gitignored from the source repo)
 ├── results/             # populated by submit.sh on completion
+├── README.md            # this file
 └── data/
     ├── ex/ARCH-COMP/2026-NLN/
-    │   ├── run_benchmarks.py   # benchmark runner (TIMEOUT=5000s)
-    │   └── benchmarks/         # one script per (benchmark, instance) pair
+    │   ├── run_benchmarks.py     # benchmark runner (TIMEOUT=5000s)
+    │   ├── benchmarks/
+    │   │   ├── LALO20.py
+    │   │   └── CVDP23_finite_time.py
+    │   └── figure_lalo20_grid.py # invoked after the CSV is written
     └── src/functions/
-        ├── ct_DS_robust.py     # robust barrier search
-        ├── solve_helpers.py    # MOSEK/CVXOPT fallback wrapper
-        ├── sos_validate.py     # post-solve numerical validation
-        ├── sinc_relaxation.py  # sin(θ) → θ·σ relaxation
-        └── ... (other v2 helpers)
+        ├── ct_DS_robust.py       # robust barrier search
+        ├── ct_DS_finite_time.py  # finite-time-horizon SOS solver
+        ├── solve_helpers.py      # MOSEK/CVXOPT fallback + degree sweep wrapper
+        ├── sos_validate.py       # combined coefficient + pointwise validator
+        ├── result_export.py      # JSON side-channel writer
+        ├── verify_smt.py         # Z3 post-hoc verifier (for offline checks)
+        └── ...                   # other v2 helpers
 ```

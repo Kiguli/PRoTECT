@@ -42,6 +42,24 @@ def write_result_json(out_dir, label, result_dict):
             k: float(v) if isinstance(v, (int, float)) else str(v)
             for k, v in result_dict['sos_residuals'].items()
         }
+    # Finite-time-specific & generic extra fields (optional).
+    for k in ('time_orders', 'T_horizon', 'solve_time', 'solve_time_total',
+              'variant'):
+        if k in result_dict:
+            v = result_dict[k]
+            try:
+                payload[k] = float(v) if isinstance(v, (int, float)) else v
+            except Exception:
+                payload[k] = str(v)
+    if 'pointwise' in result_dict:
+        pw = result_dict['pointwise']
+        if isinstance(pw, dict):
+            payload['pointwise'] = {
+                k: (float(v) if isinstance(v, (int, float)) else str(v))
+                for k, v in pw.items()
+            }
+        else:
+            payload['pointwise'] = str(pw)
     out_path = os.path.join(out_dir, f'{label}.result.json')
     with open(out_path, 'w') as fp:
         json.dump(payload, fp, indent=2)

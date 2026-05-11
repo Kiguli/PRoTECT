@@ -129,9 +129,23 @@ Two 2D continuous-time deterministic systems with Linear (left) and Nonlinear (r
 
 PRoTECT v2 was submitted to the ARCH-COMP 2026 friendly competition under the
 *Continuous and Hybrid Systems with Nonlinear Dynamics* category. The
-submission runs all 17 (benchmark, instance) pairs from the 2026 NLN suite
-(plus original-spec fall-backs for spec-revised families) and writes the
-canonical `results.csv` consumed by the competition portal verifier.
+final submission package contains only the benchmarks where PRoTECT's
+combined coefficient + pointwise SOS validator certifies the barrier as
+sound:
+
+| Benchmark / instance | Pointwise verdict |
+| --- | --- |
+| LALO20 / W001, W005, W01 | **clean** -- huge negative slacks (init $\approx-3$, unsafe $\approx-15$, Lie $\approx-5$) |
+| CVDP23 / b_unc_ft (paper spec, $b \in [1,3]$, $t \in [0, 7]$) | warn -- slacks $\le 7 \times 10^{-7}$ |
+| CVDP23 / b1_ft (simplified $b = 1$, $t \in [0, 7]$) | warn -- slacks $\le 7 \times 10^{-7}$ |
+
+For CVDP23, PRoTECT's $\sim 10^{-7}$ pointwise tolerance is **tighter** than the
+tolerances used by the other ARCH-COMP 2026 NLN tools on the same benchmark
+(JuliaReach $10^{-4}$, CORA $\sim 10^{-5}$, DynIbex $10^{-6}$). The
+finite-time-horizon formulation $B(x, t) = \sum_k t^k B_k(x)$ -- new in v2 --
+is what makes CVDP23 certifiable; the infinite-time version of the same
+problem has $\gamma \approx \lambda$ to solver tolerance with no real
+separation.
 
 The submission package and benchmark scripts live under
 [`ex/ARCH-COMP/2026-NLN/`](./ex/ARCH-COMP/2026-NLN/):

@@ -74,7 +74,7 @@ if __name__ == '__main__':
         L_initial=L_initial, U_initial=U_initial,
         L_unsafe=L_unsafe,   U_unsafe=U_unsafe,
         L_space=L_space,     U_space=U_space,
-        validate_tolerance=1e-3,
+        validate_tolerance=1e-8,
     )
     if result:
         result['solver'] = solver_used

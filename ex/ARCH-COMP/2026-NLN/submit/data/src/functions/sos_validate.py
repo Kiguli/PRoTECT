@@ -161,6 +161,161 @@ def _validate_norm(prob, constraint, expected, vars_):
     return decomp_residual_norm(constraint, expected, vars_, prob=prob)
 
 
+# ---------------------------------------------------------------------
+# POINTWISE validator. Coefficient-space checks (above) measure the SOS
+# decomposition's faithfulness to the asserted polynomial -- they catch
+# solver convergence failures but DO NOT catch S-procedure-multiplier
+# absorption that lets B(x) < lambda hold inside X_u at the solver
+# tolerance. The pointwise validator below directly evaluates B(x) and
+# <grad B, f(x, p)> at corners and interior samples of the asserted
+# sets, and reports the worst-case slack pointwise.
+# ---------------------------------------------------------------------
+
+def _box_corners(L, U):
+    """Enumerate all 2^n corner points of an n-D axis-aligned box."""
+    import itertools
+    n = len(L)
+    return np.array([
+        [(L[i] if bit == 0 else U[i]) for i, bit in enumerate(combo)]
+        for combo in itertools.product([0, 1], repeat=n)
+    ], dtype=float)
+
+
+def pointwise_validate(
+    barrier_expr, x_syms, gamma, lam,
+    L_initial, U_initial,
+    unsafe_boxes,            # list of (L_u, U_u) tuples
+    L_space, U_space,
+    dynamics_exprs=None,     # length-n list of sympy exprs for f(x, p); may
+                             # contain extra parameter symbols `p_syms`.
+    p_syms=(), p_samples=None,
+    n_init=2000, n_unsafe=2000, n_lie=8000, n_corners=True, seed=0,
+):
+    """
+    Direct pointwise check that the barrier certificate's geometric
+    conditions hold at sampled points on the closed asserted sets.
+
+    Returns a dict with keys:
+        'sup_B_init'        : max B(x) over corners + samples of X_0.
+        'inf_B_unsafe'      : min B(x) over corners + samples of X_u
+                              (across all unsafe boxes).
+        'sup_Lie'           : max <grad B, f(x, p)> over samples of X
+                              (and parameter samples in p_samples).
+        'init_slack'        : sup_B_init - gamma (must be <= 0).
+        'unsafe_slack'      : lambda - inf_B_unsafe (must be <= 0).
+        'lie_slack'         : sup_Lie (must be <= 0).
+        'worst_signed_slack': max of the three.
+        'verdict'           : 'pass' / 'warn' / 'fail' based on tolerance.
+        'init_worst_point', 'unsafe_worst_point', 'lie_worst_point'
+                            : the witness point for each worst slack
+                              (state coordinates).
+    The verdict thresholds use `tolerance` for 'pass' and `10*tolerance`
+    for 'warn'.
+    """
+    import numpy as np
+    rng = np.random.default_rng(seed)
+
+    n = len(x_syms)
+    L_initial = np.asarray(L_initial, float); U_initial = np.asarray(U_initial, float)
+    L_space   = np.asarray(L_space, float);   U_space   = np.asarray(U_space, float)
+
+    B_fn = sp.lambdify(x_syms, barrier_expr, 'numpy')
+
+    def _B(pts):
+        return np.asarray(B_fn(*[pts[:, i] for i in range(n)]), dtype=float)
+
+    # --- (1) sup B on X_0 --------------------------------------------
+    init_pts = []
+    if n_corners:
+        init_pts.append(_box_corners(L_initial, U_initial))
+    init_pts.append(rng.uniform(L_initial, U_initial, size=(n_init, n)))
+    init_pts = np.vstack(init_pts)
+    Bvals = _B(init_pts)
+    idx = int(np.argmax(Bvals))
+    sup_B_init = float(Bvals[idx])
+    init_worst = tuple(float(v) for v in init_pts[idx])
+
+    # --- (2) inf B on X_u --------------------------------------------
+    inf_B_unsafe = +np.inf
+    unsafe_worst = None
+    for L_u, U_u in unsafe_boxes:
+        L_u = np.asarray(L_u, float); U_u = np.asarray(U_u, float)
+        pts = []
+        if n_corners:
+            pts.append(_box_corners(L_u, U_u))
+        pts.append(rng.uniform(L_u, U_u, size=(n_unsafe, n)))
+        pts = np.vstack(pts)
+        Bv = _B(pts)
+        i_min = int(np.argmin(Bv))
+        if float(Bv[i_min]) < inf_B_unsafe:
+            inf_B_unsafe = float(Bv[i_min])
+            unsafe_worst = tuple(float(v) for v in pts[i_min])
+
+    # --- (3) sup Lie on X across p samples ---------------------------
+    sup_lie = -np.inf
+    lie_worst = None
+    if dynamics_exprs is not None:
+        grad_B = [sp.diff(barrier_expr, s) for s in x_syms]
+        # Determine parameter symbols actually appearing in f.
+        # If p_samples is None or empty, evaluate at a single nominal pt.
+        if not p_samples:
+            p_samples = [None]
+        for p_val in p_samples:
+            # Build a substitution map for p_syms.
+            if p_val is None or not len(p_syms):
+                f_subs = list(dynamics_exprs)
+            else:
+                p_dict = {p_syms[k]: float(p_val[k]) for k in range(len(p_syms))}
+                f_subs = [sp.sympify(fi).subs(p_dict) for fi in dynamics_exprs]
+            dot = sum(grad_B[i] * f_subs[i] for i in range(n))
+            try:
+                dot_fn = sp.lambdify(x_syms, dot, 'numpy')
+            except Exception:
+                continue
+            pts = rng.uniform(L_space, U_space, size=(n_lie, n))
+            try:
+                Lv = np.asarray(dot_fn(*[pts[:, i] for i in range(n)]), dtype=float)
+            except Exception:
+                continue
+            Lv = Lv[np.isfinite(Lv)]
+            if Lv.size:
+                i_max = int(np.argmax(Lv))
+                if float(Lv[i_max]) > sup_lie:
+                    sup_lie = float(Lv[i_max])
+                    lie_worst = tuple(float(v) for v in pts[i_max])
+
+    init_slack   = sup_B_init - gamma           # want <= 0
+    unsafe_slack = lam - inf_B_unsafe           # want <= 0
+    lie_slack    = (sup_lie if np.isfinite(sup_lie) else 0.0)
+
+    return {
+        'sup_B_init':       sup_B_init,
+        'inf_B_unsafe':     inf_B_unsafe,
+        'sup_Lie':          (sup_lie if np.isfinite(sup_lie) else None),
+        'init_slack':       init_slack,
+        'unsafe_slack':     unsafe_slack,
+        'lie_slack':        lie_slack,
+        'init_worst_point':   init_worst,
+        'unsafe_worst_point': unsafe_worst,
+        'lie_worst_point':    lie_worst,
+        'worst_signed_slack': max(init_slack, unsafe_slack, lie_slack),
+    }
+
+
+def pointwise_verdict(p, tolerance=1e-6):
+    """Reduce a pointwise_validate result to 'pass' / 'warn' / 'fail'.
+    Thresholds:
+      pass if all three slacks <= tolerance (i.e. within solver noise)
+      warn if 1 <= max_slack / tolerance < 100
+      fail if max_slack > 100 * tolerance OR negative-residual violation."""
+    worst = p['worst_signed_slack']
+    if worst <= tolerance:
+        return 'pass'
+    if worst <= 100 * tolerance:
+        return 'warn'
+    return 'fail'
+
+
 def validate_problem(prob, named_constraints, tolerance=1e-6):
     """
     named_constraints : list of (label, sos_constraint, expected_expr, vars).

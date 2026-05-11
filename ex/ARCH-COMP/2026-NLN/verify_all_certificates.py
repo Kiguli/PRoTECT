@@ -96,31 +96,25 @@ def _traf22_dyn(syms, q_s):
 
 
 def _spre22_dyn(syms):
-    u, v, vx, vy = syms
-    R = 42164.0e3
-    MU = 3.986e14 * 60.0**2
-    N = (MU / R**3) ** 0.5
-    MC = 500.0
-    K2 = [
-        [-288.0288, 0.1312, -9614.9898, 0.0],
-        [-0.1312, -288.0, 0.0, -9614.9883],
+    # Match benchmarks/SPRE22.py: polynomialised gravity (1st-order Taylor)
+    # at origin in METRES, K1 LQR feedback (approaching mode).
+    x, y, vx, vy = syms
+    r = 42164e3
+    mu = 3.986e14 * 60.0**2
+    m_c = 500.0
+    n = (mu / r**3) ** 0.5
+    g_lin = mu / r**3
+    K1 = [
+        [-28.8287,   0.1005, -1449.9754,    0.0046],
+        [ -0.087,  -33.2562,     0.00462, -1451.5013],
     ]
-    x_m = u * 1000.0
-    y_m = v * 1000.0
-    state = [x_m, y_m, vx, vy]
-    ufb0 = sum(K2[0][i] * state[i] for i in range(4))
-    ufb1 = sum(K2[1][i] * state[i] for i in range(4))
-    rc2 = (R + x_m)**2 + y_m**2
-    # Use sqrt for the radial term; this stays polynomial-free but is fine
-    # for sampling.
-    rc = sp.sqrt(rc2)
     return [
-        vx / 1000.0,
-        vy / 1000.0,
-        N**2 * x_m + 2 * N * vy + MU / R**2
-            - MU / rc**3 * (R + x_m) + ufb0 / MC,
-        N**2 * y_m - 2 * N * vx
-            - MU / rc**3 * y_m + ufb1 / MC,
+        vx,
+        vy,
+        (n**2 + K1[0][0]/m_c)*x + (2*n + K1[0][3]/m_c)*vy
+            + K1[0][1]/m_c * y + K1[0][2]/m_c * vx - g_lin * x,
+        (n**2 + K1[1][1]/m_c)*y + (K1[1][2]/m_c - 2*n)*vx
+            + K1[1][0]/m_c * x + K1[1][3]/m_c * vy - g_lin * y,
     ]
 
 
@@ -128,40 +122,42 @@ def _spre22_dyn(syms):
 SPECS = OrderedDict()
 
 
-# ROBE25 (3-D): u, V, w. State space envelope from the benchmark script.
+# ROBE25 (3-D): u, V, w. State-space envelope from benchmarks/ROBE25.py:
+#   L_space=[0, 0, 0], U_space=[1.1, scale_y*0.5, 1.1]
 for ii, beta_v, gamma_v in [(2, 1e3, 1e5), (3, 1e3, 1e7)]:
     scale_y = 100.0
     eps = 1e-3
     SPECS[f'ROBE25_{ii}'] = {
         'state_dim': 3,
         'syms_name': 'x0:3',
-        'L_init':   [1.0 - eps, -eps * scale_y, -eps],
+        'L_init':   [1.0 - eps, 0.0,             0.0],
         'U_init':   [1.0 + eps,  eps * scale_y,  eps],
         'unsafe_regions': [
-            ([0.0, -0.5 * scale_y, 0.0], [0.9, 0.5 * scale_y, 1.1]),
-            ([0.0, -0.5 * scale_y, 1.0], [1.1, 0.5 * scale_y, 1.1]),
+            ([0.0, 0.0, 0.0], [0.9, 0.5 * scale_y, 1.1]),
+            ([0.0, 0.0, 1.0], [1.1, 0.5 * scale_y, 1.1]),
         ],
-        'L_space':  [0.0, -0.5 * scale_y, 0.0],
-        'U_space':  [1.1,  0.5 * scale_y, 1.1],
+        'L_space':  [0.0, 0.0,            0.0],
+        'U_space':  [1.1, 0.5 * scale_y,  1.1],
         'dyn': lambda s, a=0.4, b=beta_v, g=gamma_v, sy=scale_y:
                   _robe_dyn(s, a, b, g, sy),
         'p_samples': [None],
     }
 
 
-# ROBE21 instances.
+# ROBE21 instances. State-space envelope from benchmarks/ROBE21.py:
+#   L_space=[0, 0, 0], U_space=[1.1, SCALE_Y * 0.01, 1.1] with SCALE_Y=1e4
 for ii, eps in [(1, 0.001), (2, 0.005), (3, 0.01)]:
     SPECS[f'ROBE21_{ii}'] = {
         'state_dim': 3,
         'syms_name': 'x0:3',
-        'L_init':   [1.0 - eps, -eps * 1e4, -eps],
-        'U_init':   [1.0 + eps,  eps * 1e4,  eps],
+        'L_init':   [1.0 - eps, 0.0,         0.0],
+        'U_init':   [1.0 + eps, eps * 1e4,   eps],
         'unsafe_regions': [
-            ([0.0, -1e3, 0.0], [0.9, 1e3, 1.1]),
-            ([0.0, -1e3, 1.0], [1.1, 1e3, 1.1]),
+            ([0.0, 0.0, 0.0], [0.9, 1e2, 1.1]),
+            ([0.0, 0.0, 1.0], [1.1, 1e2, 1.1]),
         ],
-        'L_space':  [0.0, -1e3, 0.0],
-        'U_space':  [1.1,  1e3, 1.1],
+        'L_space':  [0.0, 0.0,  0.0],
+        'U_space':  [1.1, 1e2,  1.1],
         'dyn': lambda s: _robe_dyn(s, 0.04, 1e4, 3e7, 1e4),
         'p_samples': [None],
     }
@@ -244,15 +240,15 @@ SPECS['LOVO21'] = {
 }
 
 
-# LALO20 instances.
+# LALO20 instances (state-space envelope matches benchmarks/LALO20.py).
 for inst, W, x4_unsafe in [('W001', 0.01, 4.5),
                            ('W005', 0.05, 4.5),
                            ('W01',  0.10, 5.0)]:
     centre = [1.2, 1.05, 1.5, 2.4, 1.0, 0.1, 0.45]
     L_init = [c - W for c in centre]
     U_init = [c + W for c in centre]
-    L_space = [0.0, 0.0, 0.0, 1.5, 0.0, 0.0, 0.0]
-    U_space = [4.0, 4.0, 4.0, x4_unsafe + 1.0, 4.0, 4.0, 4.0]
+    L_space = [0.5, 0.5, 1.0, 1.5, 0.5, 0.05, 0.2]
+    U_space = [2.5, 2.5, 4.0, 6.0, 2.5, 0.5,  1.2]
     L_unsafe = list(L_space); L_unsafe[3] = x4_unsafe
     SPECS[f'LALO20_{inst}'] = {
         'state_dim': 7,

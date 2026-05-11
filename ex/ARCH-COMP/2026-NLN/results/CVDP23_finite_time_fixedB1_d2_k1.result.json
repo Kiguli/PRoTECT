@@ -1,0 +1,9 @@
+{
+  "b_degree": 2,
+  "error": "AssertionError (probably odd b_degree)",
+  "solver": "cvxopt",
+  "time_orders": 1.0,
+  "T_horizon": 7.0,
+  "solve_time_total": 0.0,
+  "variant": "fixedB1.0"
+}
