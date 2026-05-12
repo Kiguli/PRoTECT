@@ -66,6 +66,9 @@ def ct_DS_robust(
     validate_sos=False,
     validate_tolerance=1e-8,
     maximize_separation=False,
+    init_margin=0.0,
+    unsafe_margin=0.0,
+    lie_margin=0.0,
 ):
     result = {'b_degree': b_degree}
 
@@ -183,22 +186,41 @@ def ct_DS_robust(
     LieDeriv = np.array([sp.diff(Barrier, xi) for xi in x])
     Barrier_f = np.sum(LieDeriv * f)
 
+    # Per-condition strict-positivity margins. The Positivstellensatz is
+    # rigorous in exact arithmetic: -B - sum L_i g_i + gamma is SOS implies
+    # B <= gamma on X_0 (and analogously for the unsafe and Lie
+    # conditions). With MOSEK's coefficient tolerance epsilon ~ 1e-8,
+    # the polynomial identity holds only up to epsilon, which at large
+    # basis values on the boundary can give pointwise drift of order
+    # epsilon * max_basis_value (~1e-5 for degree-4 polynomials on
+    # [-3, 3]). Each per-condition margin below shifts the SOS expression
+    # by delta > 0 so the asserted polynomial is forced to be >= delta
+    # everywhere on R^n. The certificate then has a rigorous pointwise
+    # margin of at least delta - epsilon * max_basis_value on the
+    # asserted set -- positive as long as delta exceeds the solver's
+    # amplified noise floor.
+    init_delta   = float(init_margin)
+    unsafe_delta = float(unsafe_margin)
+    lie_delta    = float(lie_margin)
+
     try:
         # Initial-set SOS: in x.
         L0_g0 = [Li * gi for Li, gi in zip(L0, g0_polys)]
-        first_condition = prob.add_sos_constraint(-Barrier - sum(L0_g0) + gamma, x)
+        first_condition = prob.add_sos_constraint(
+            -Barrier - sum(L0_g0) + gamma - init_delta, x)
 
         # Unsafe-region SOS: in x, one per region.
         for j in range(n_unsafe):
             L1j_g1j = [Lji * gji for Lji, gji in zip(L1[j], g1_polys[j])]
-            second_condition = prob.add_sos_constraint(Barrier - sum(L1j_g1j) - lambda_, x)
+            second_condition = prob.add_sos_constraint(
+                Barrier - sum(L1j_g1j) - lambda_ - unsafe_delta, x)
 
         # Lie-derivative SOS: in (x, p), with both state-space and
         # parameter-box S-procedure multipliers.
         Ls_gspace = [Lsi * gi for Lsi, gi in zip(Ls, g_space)]
         Lp_gparam = [Lpk * gpk for Lpk, gpk in zip(Lp, g_param)]
         last_condition = prob.add_sos_constraint(
-            -Barrier_f - sum(Ls_gspace) - sum(Lp_gparam),
+            -Barrier_f - sum(Ls_gspace) - sum(Lp_gparam) - lie_delta,
             xp,
         )
 
@@ -291,17 +313,18 @@ def ct_DS_robust(
         named = [
             ('init',
              first_condition,
-             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma,
+             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma - init_delta,
              list(x)),
             ('lie',
              last_condition,
              -Barrier_f
              - sum(Lsi * gi for Lsi, gi in zip(Ls, g_space))
-             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+             - lie_delta,
              list(xp)),
             ('barrier', barrier_constraint, Barrier, list(x)),
             ('unsafe_last', second_condition,
-             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_,
+             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_ - unsafe_delta,
              list(x)),
         ]
         v = validate_problem(prob, named, tolerance=validate_tolerance)

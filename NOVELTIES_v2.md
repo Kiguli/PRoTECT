@@ -175,6 +175,283 @@ Particularly useful on CVDP23 finite-time, where MOSEK converges
 but CVXOPT delivers the lowest pointwise slack — the wrapper
 automatically picks whichever solver gives the cleanest verdict.
 
+## 7. Sinc relaxation for non-polynomial dynamics
+*Files: `src/functions/sinc_relaxation.py`, `src/functions/relaxations.py`*
+
+**Problem.** v1 requires polynomial dynamics. Trigonometric ($\sin$,
+$\cos$, $\tan$) and other non-polynomial terms (exp, log, sqrt,
+inv_power, ...) appear in mechanics (TRAF22's $\sin\psi$,
+TSPS25's bus-coupling sines), control (steering, NN activations), and
+chemistry, blocking PRoTECT from those benchmarks entirely.
+
+**Solution.** The identity $\sin(a) = \mathrm{sinc}(a) \cdot a$,
+combined with the bound $\mathrm{sinc}(a) \in [\mathrm{sinc}(A), 1]$
+on $|a| \le A$, lets us introduce an auxiliary state
+$q = \mathrm{sinc}(a)$ with the trivial flow $\dot q = 0$ and the
+*box S-procedure* $g_q(q) = (q - \mathrm{sinc}(A))(1 - q) \ge 0$ on
+its admissible range. The dynamics become polynomial in $(x, q)$ and
+flow naturally through the v2 robust solver. Analogously for $\cos$:
+$\cos(a) = 1 - r a^2 / 2$ with $r = \mathrm{sinc}(a/2)^2 \in
+[\mathrm{sinc}(A/2)^2, 1]$.
+
+`relaxations.py` generalises this into a registry of named
+relaxations:
+
+| Term | Polynomial substitute | Auxiliary box |
+| --- | --- | --- |
+| $\sin(a)$ | $q a$ | $q \in [\mathrm{sinc}(A), 1]$ |
+| $\cos(a)$ | $1 - r a^2 / 2$ | $r \in [\mathrm{sinc}(A/2)^2, 1]$ |
+| $\tan(a)$ | $q a$ | $q \in [1, \tan(A)/A]$, $\lvert a \rvert < \pi/2$ |
+| $e^a$ | $1 + q a$ | $q \in [\,?,\, (e^A - 1)/A\,]$ |
+| $\log(1 + a)$ | $q a$ | $q \in [1/(1 + A), 1]$ |
+| $\sqrt{a}$ | $q$, $q^2 = a$ | equality multiplier |
+| $1/a^k$ | $q$, $q a^k = 1$ | equality multiplier |
+
+**Demonstration.** TRAF22 has the steering dynamics
+$\dot \psi = (v / l_{\rm wb}) \tan\delta$ and $\dot s_y = v \sin\psi$
+which are non-polynomial. v1 could not handle this at all. v2's
+TRAF22 benchmark drops $s_x$ from the state, swaps $\sin\psi
+\to q_s \psi$ with $q_s \in [\mathrm{sinc}(\psi_{\max}), 1]$ via the
+sinc relaxation, treats $q_s$ as an uncertain parameter via the
+robust S-procedure (feature 2), and produces a barrier $B(x)$ over
+the 4-D physical state. The sinc relaxation is essential to bringing
+TRAF22 into the SOS-verifiable regime.
+
+**Coverage.** Continuous-time deterministic via `ct_DS_robust`'s
+parameter-box S-procedure; the same auxiliary-state trick applies
+unchanged to `dt_DS_robust`, `ct_SS_robust`, `dt_SS_robust`.
+
+## 8. Padé approximants for arbitrary smooth functions
+*Files: `src/functions/pade.py`*
+
+**Problem.** The sinc relaxation is exact for trig terms only. For an
+arbitrary smooth function $f$ (e.g. a learnt control law, an empirical
+fit, a transcendental dynamics term), there's no closed-form
+auxiliary-box identity.
+
+**Solution.** Padé approximants give the unique rational $[m/n]$
+approximation that matches $f$'s Taylor expansion to order $m + n$.
+Multiplying through by the denominator $Q_n(x)$ converts $f \approx
+P_m(x) / Q_n(x)$ into the polynomial identity $f \cdot Q_n - P_m = 0$
+(modulo truncation error). An auxiliary state $q$ standing for $f(x)$
+is bounded by the worst-case $f \cdot Q_n - P_m$ residual on the
+input range — then $q \cdot Q_n - P_m \in [-\varepsilon, \varepsilon]$
+becomes a box constraint absorbable by the v2 SOS pipeline.
+
+**Coverage.** General-purpose; usable by any benchmark with smooth
+non-polynomial terms beyond the registry in `relaxations.py`.
+
+## 9. Per-condition strict-positivity margins
+*Files: `src/functions/ct_DS_robust.py` (new `init_margin`,
+`unsafe_margin`, `lie_margin` parameters; pattern replicable across
+the other solvers)*
+
+**Problem.** The pointwise validator (feature 1) catches certificates
+that are coefficient-clean but pointwise-loose by a fraction of a
+unit. Why does pointwise looseness happen at all? In *exact*
+arithmetic, the SOS Positivstellensatz
+$-B(x) - \sum_i L_i(x) g_{X_0,i}(x) + \gamma \in \Sigma[x]$
+implies $B(x) \le \gamma$ rigorously on $X_0$. The pointwise residual
+is purely an artifact of MOSEK's $\varepsilon \sim 10^{-8}$
+floating-point tolerance amplified by the polynomial basis values on
+the boundary.
+
+**Solution.** Replace each SOS condition with a *strictly*-positive
+variant:
+
+$$-B(x) - \sum_i L_i(x) g_{X_0,i}(x) + \gamma - \delta_{\text{init}} \in \Sigma[x]$$
+
+(and analogously for the unsafe and Lie/step/generator/expectation
+conditions). With $\delta > 0$, the asserted SOS polynomial is forced
+to be $\ge \delta$ everywhere on $\mathbb{R}^n$, so on the asserted
+set we get a *rigorous* pointwise margin of $\ge \delta - \varepsilon
+\cdot M_{\text{basis}}$, where $M_{\text{basis}}$ is the basis
+amplification factor. Setting $\delta \gg \varepsilon M_{\text{basis}}$
+swamps the solver noise floor and gives a strictly positive pointwise
+margin.
+
+**Demonstration.** On LALO20 (pointwise slacks $\sim -5$), adding
+$\delta = 0.1$ on every condition still admits a feasible certificate
+with the validator reporting `pass` strictly. On CVDP23/b2 (genuinely
+tight at degree 4), even $\delta = 10^{-4}$ makes the SOS programme
+infeasible — diagnostically confirming the certificate's intrinsic
+margin is below that threshold. The per-condition $\delta$s thus also
+serve as a *quantitative probe of the certificate's real margin*.
+
+**Coverage.** Currently implemented in `ct_DS_robust`; the same code
+pattern (subtract $\delta$ from each `add_sos_constraint` LHS and the
+validator's `named` list) extends to the three other v2 solvers.
+
+## 10. Reach-avoid encoding
+*Files: `src/functions/ct_DS_reach_avoid.py`, `src/functions/reach_avoid.py`*
+
+**Problem.** v1 verifies safety only (avoid the unsafe set forever).
+ARCH-COMP and many control specs ask for *reach-avoid*: reach a
+target region $T$ within horizon $H$ while staying away from $X_u$.
+
+**Solution.** A two-barrier composite: $B_{\text{safety}}(x)$ excludes
+$X_u$ (standard), and a complementary $V(x)$ acts as a control
+Lyapunov-like certificate driving the system into $T$. Together they
+prove $X_0 \to T$ under safety. The SOS programme couples them via
+the standard Positivstellensatz; uncertain parameters and finite
+horizons combine with features 2 and 3 unchanged.
+
+## 11. Hybrid-system barriers
+*Files: `src/functions/ct_DS_hybrid.py`, `src/functions/hybrid.py`*
+
+**Problem.** Many ARCH-COMP NLN benchmarks are nominally hybrid
+(SPRE22's spacecraft modes; LOVO25's tangential-crossing
+formulation). v1 has no native hybrid support.
+
+**Solution.** Mode-local barriers $B_q(x)$ per discrete mode $q$, with
+*reset-map continuity* conditions
+$B_{q'}(R_{q \to q'}(x)) \le B_q(x)$ at each guard transition.
+The reset map $R$ becomes an equality multiplier in the SOS
+programme; the guard polynomial becomes a positivity multiplier.
+
+## 12. Piecewise-input sequence handling
+*Files: `src/functions/ct_DS_piecewise_sequence.py`, `src/functions/piecewise_input.py`*
+
+**Problem.** TRAF22's reference controller emits a piecewise-constant
+input sequence over the horizon. v1 verifies only autonomous systems.
+
+**Solution.** Treat each piecewise input segment $u_k$ as a fresh
+parameter box; chain segment-local barriers via boundary matching.
+Combined with features 2 and 3, gives a full piecewise-input
+verification pipeline.
+
+## 13. Sub-Gaussian noise barriers
+*Files: `src/functions/ct_SS_subgaussian.py`*
+
+**Problem.** v1's ct_SS / dt_SS assume Gaussian (or uniform / log-normal)
+noise with closed-form moments. Many practical noise models are
+sub-Gaussian without nice moments.
+
+**Solution.** Use the sub-Gaussian moment bound $E[e^{\lambda X}]
+\le e^{\sigma^2 \lambda^2 / 2}$ directly in the expectation SOS
+constraint. The resulting condition is polynomial in $\lambda$, $x$;
+PRoTECT's SOS pipeline handles it.
+
+## 14. Block-structured / compositional barriers
+*Files: `src/functions/block_decomp.py`*
+
+**Problem.** Networked systems $x_i' = f_i(x_i) + \sum_{j \ne i}
+h_{ij}(x_i, x_j)$ have full-state dimension growing with the network
+size; the monolithic SOS programme blows up combinatorially.
+
+**Solution.** Per-subsystem barriers $B_i(x_i)$ plus interconnection
+"supply-rate" certificates $S_{ij}$ that account for inter-subsystem
+energy flow. Each per-subsystem SOS programme is independent and small,
+and the whole-system safety follows from a small-gain argument.
+Reference: Anand, Lavaei, Soudjani (compositional CBFs).
+
+## 15. Sparse SOS / term sparsity
+*Files: `src/functions/sparse_sos.py`*
+
+**Problem.** Standard SOS PSD coefficient count is
+$O\!\left(\binom{n + d}{d}^2\right)$. For TSPS25 ($n = 15$,
+$d = 4$): $\binom{19}{4}^2 = 14\,400$ — out of reach. Term sparsity
+(Wang, Magron, Lasserre, SIAM J. Optim. 2021) exploits the fact that
+sparse polynomials admit SOS decompositions on much smaller monomial
+bases.
+
+**Solution.** Scaffold for TSSOS / term-sparse PSD pivots — currently
+a stub awaiting the Python port of TSSOS.
+
+## 16. Differential-algebraic systems (DAE)
+*Files: `src/functions/dae.py`*
+
+**Problem.** TSPS25's index-1 DAE form $\dot x = f(x, y, u)$,
+$0 = g(x, y, u)$ has 27 algebraic equations binding 27 variables.
+v1's pure-ODE pipeline cannot consume this directly.
+
+**Solution.** Two strategies:
+* **Index-1 elimination**: solve $g = 0$ explicitly for $y = \phi(x, u)$
+  and substitute back into $f$, recovering a pure ODE.
+* **Manifold-restricted SOS**: keep $y$ as decision variables and add
+  $\lambda_g(x, y) \cdot g(x, y, u)$ as an *equality multiplier* in the
+  SOS programme. Mathematically the same Positivstellensatz pattern as
+  the relaxation registry's $\sqrt{a}$, $1/a^k$ equality multipliers.
+
+## 17. Slow-fast model reduction
+*Files: `src/functions/slow_fast.py`*
+
+**Problem.** ROBE25 instances 2 and 3 with $\gamma = 10^5$ and $10^7$
+are *stiff* — fast variables relax to a quasi-steady manifold on
+timescales much shorter than the slow variables. The SOS programme on
+the full system has terrible conditioning.
+
+**Solution.** Solve $f_{\text{fast}} = 0$ for $x_{\text{fast}} =
+\phi(x_{\text{slow}})$ (quasi-steady-state) and substitute back into
+$f_{\text{slow}}$, yielding a reduced ODE on the slow variables. The
+reduced system has much better SOS conditioning.
+
+## 18. Disturbance robust SOS
+*Files: `src/functions/disturbance.py`*
+
+**Problem.** Bounded time-varying disturbances $w(t) \in W$ in the
+dynamics — TRAF22's $w_1, w_2$ are paper-spec disturbances v1 cannot
+handle natively.
+
+**Solution.** Mathematically identical to the parameter-robust
+encoding (feature 2): the disturbance gets a box S-procedure
+multiplier in the Lie-derivative SOS. The semantic distinction is
+just whether the variable is allowed to vary in time (disturbance)
+or held constant (parameter); both reduce to the same SOS programme.
+Thin re-export of `ct_DS_robust` under the disturbance terminology.
+
+## 19. NN-controlled closed-loop verification
+*Files: `src/functions/nn_control.py`*
+
+**Problem.** AINNCS-style benchmarks have a ReLU NN controller in the
+loop: $\dot x = f(x, \pi(x))$ with $\pi$ a feed-forward NN. v1 has no
+NN support.
+
+**Solution.** Exploit the piecewise-affine (PWA) representation of a
+ReLU NN: the input domain partitions into polyhedral cells, and $\pi$
+is affine on each. Per-cell SOS programmes verify safety inside each
+cell using polytope constraints (from `sets.py`); inter-cell
+continuity via boundary-hyperplane S-procedure multipliers.
+
+## 20. Vertex enumeration for parameter robustness
+*Files: `src/functions/vertex_enumeration.py`*
+
+**Problem.** When the parameter box has many corners or the dynamics
+are highly nonlinear in $p$, the robust SOS (feature 2) can give
+unduly conservative certificates.
+
+**Solution.** Alternative to the robust S-procedure: solve $2^m$
+independent SOS programmes at the vertices of the parameter polytope,
+then intersect the resulting barrier level sets. Each per-vertex SOS
+is smaller and better-conditioned, and the intersection certificate
+applies to every $p$ in the polytope (by convex combination of the
+vertex certificates).
+
+## What each contribution adds, in summary
+
+| v2 feature | Files | Closes what gap | Affects which barrier classes |
+|---|---|---|---|
+| 1. Pointwise validator | `sos_validate.py` | Coefficient-clean / pointwise-fail soundness gap | all four |
+| 2. Robust parameter box | `*_robust.py` | Need to lift parameter to state | all four |
+| 3. Finite-time barrier | `*_finite_time.py` | Just-barely-safe infinite-time tightness | det. CT/DT |
+| 4. Full-precision save | each `_robust` / `_finite_time` solver | Coefficient rounding kills stiff barriers | all four |
+| 5. Z3/dReal verifier | `verify_smt.py`, `verify_dreal.py` | Sampling vs. rigorous proof | all four |
+| 6. MOSEK/CVXOPT fallback + degree sweep | `solve_helpers.py` | Single-solver brittleness | all four |
+| 7. **Sinc relaxation** | `sinc_relaxation.py`, `relaxations.py` | **No trig dynamics support** | all four |
+| 8. Padé approximant relaxation | `pade.py` | No support for arbitrary smooth non-polynomial terms | all four |
+| 9. Per-condition margin | `ct_DS_robust.py` (pattern) | Rigorous pointwise margin > solver tolerance | all four (pattern) |
+| 10. Reach-avoid encoding | `ct_DS_reach_avoid.py`, `reach_avoid.py` | Only safety in v1 | continuous-time det. |
+| 11. Hybrid barriers | `ct_DS_hybrid.py`, `hybrid.py` | No hybrid-mode support | continuous-time det. |
+| 12. Piecewise input | `ct_DS_piecewise_sequence.py`, `piecewise_input.py` | No time-varying controller | continuous-time det. |
+| 13. Sub-Gaussian noise | `ct_SS_subgaussian.py` | Only Gaussian/uniform/log-normal noise in v1 | continuous-time stoch. |
+| 14. Block-compositional | `block_decomp.py` | Monolithic SOS for large networks | all four |
+| 15. Sparse SOS | `sparse_sos.py` | High-dimensional benchmark blowup (TSPS25) | all four |
+| 16. DAE support | `dae.py` | TSPS25's DAE form | continuous-time det. (extendable) |
+| 17. Slow-fast reduction | `slow_fast.py` | Stiff systems (ROBE25/3) | continuous-time |
+| 18. Disturbance robust | `disturbance.py` | Time-varying disturbances | all four (via 2) |
+| 19. NN-controlled loop | `nn_control.py` | AINNCS / ReLU NN controllers | continuous-time det. |
+| 20. Vertex enumeration | `vertex_enumeration.py` | Conservative robust SOS | all four |
+
 ## What each contribution adds, in summary
 
 | v2 feature | Files | Closes what gap | Affects which barrier classes |
