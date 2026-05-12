@@ -46,6 +46,9 @@ def dt_DS_finite_time(
     validate_sos=False,
     validate_tolerance=1e-8,
     dim=None,
+    init_margin=0.0,
+    unsafe_margin=0.0,
+    step_margin=0.0,
 ):
     n = len(x)
     if len(f) != n:
@@ -133,11 +136,16 @@ def dt_DS_finite_time(
 
     Barrier_at_0 = Barrier.subs(k, 0)
 
+    # Per-condition strict-positivity margins.
+    init_delta = float(init_margin)
+    unsafe_delta = float(unsafe_margin)
+    step_delta = float(step_margin)
+
     try:
         first_condition = prob.add_sos_constraint(
             -Barrier_at_0
             - sum(Li * gi for Li, gi in zip(L_init, g_initial))
-            + gamma,
+            + gamma - init_delta,
             x,
         )
 
@@ -146,14 +154,15 @@ def dt_DS_finite_time(
             terms = Barrier
             terms = terms - sum(Li * gi for Li, gi in zip(L_unsafe_per_region[j], g_unsafe[j]))
             terms = terms - L_t_unsafe[j] * g_time
-            terms = terms - lambda_
+            terms = terms - lambda_ - unsafe_delta
             last_unsafe = prob.add_sos_constraint(terms, xk)
 
         last_condition = prob.add_sos_constraint(
             -Barrier_at_k1_fx + Barrier_at_k
             - sum(Li * gi for Li, gi in zip(Ls, g_space))
             - Lt_lie * g_time
-            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+            - step_delta,
             xkp,
         )
 
@@ -222,12 +231,13 @@ def dt_DS_finite_time(
             ('init', first_condition,
              -Barrier_at_0
              - sum(Li * gi for Li, gi in zip(L_init, g_initial))
-             + gamma, list(x)),
+             + gamma - init_delta, list(x)),
             ('step', last_condition,
              -Barrier_at_k1_fx + Barrier_at_k
              - sum(Li * gi for Li, gi in zip(Ls, g_space))
              - Lt_lie * g_time
-             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+             - step_delta,
              list(xkp)),
             ('barrier', barrier_constraint, Barrier, list(xk)),
             ('unsafe_last', last_unsafe,
@@ -235,7 +245,7 @@ def dt_DS_finite_time(
              - sum(Li * gi for Li, gi in zip(
                  L_unsafe_per_region[-1], g_unsafe[-1]))
              - L_t_unsafe[-1] * g_time
-             - lambda_, list(xk)),
+             - lambda_ - unsafe_delta, list(xk)),
         ]
         v = validate_problem(prob, named, tolerance=validate_tolerance)
         result['sos_residuals'] = {

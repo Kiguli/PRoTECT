@@ -58,6 +58,9 @@ def ct_DS_finite_time(
     validate_sos=False,
     validate_tolerance=1e-8,
     dim=None,
+    init_margin=0.0,
+    unsafe_margin=0.0,
+    lie_margin=0.0,
 ):
     """
     See module docstring.
@@ -193,12 +196,17 @@ def ct_DS_finite_time(
 
     Barrier_at_0 = Barrier.subs(t, 0)
 
+    # Per-condition strict-positivity margins (see ct_DS_robust).
+    init_delta = float(init_margin)
+    unsafe_delta = float(unsafe_margin)
+    lie_delta = float(lie_margin)
+
     try:
         # 1) Initial set (SOS in x): -B(x,0) - L0.g0 + gamma.
         first_condition = prob.add_sos_constraint(
             -Barrier_at_0
             - sum(Li * gi for Li, gi in zip(L_init, g_initial))
-            + gamma,
+            + gamma - init_delta,
             x,
         )
 
@@ -209,7 +217,7 @@ def ct_DS_finite_time(
             terms = terms - sum(
                 Li * gi for Li, gi in zip(L_unsafe_per_region[j], g_unsafe[j]))
             terms = terms - L_t_unsafe[j] * g_time
-            terms = terms - lambda_
+            terms = terms - lambda_ - unsafe_delta
             last_unsafe = prob.add_sos_constraint(terms, xt)
 
         # 3) Lie derivative (SOS in (x, t, p)): -Lie - Ls.gs - Lt.g_t - Lp.gp.
@@ -217,7 +225,8 @@ def ct_DS_finite_time(
             -Lie
             - sum(Li * gi for Li, gi in zip(Ls, g_space))
             - Lt_lie * g_time
-            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+            - lie_delta,
             xtp,
         )
 
@@ -305,14 +314,15 @@ def ct_DS_finite_time(
              first_condition,
              -Barrier_at_0
              - sum(Li * gi for Li, gi in zip(L_init, g_initial))
-             + gamma,
+             + gamma - init_delta,
              list(x)),
             ('lie',
              last_condition,
              -Lie
              - sum(Li * gi for Li, gi in zip(Ls, g_space))
              - Lt_lie * g_time
-             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+             - lie_delta,
              list(xtp)),
             ('barrier', barrier_constraint, Barrier, list(xt)),
             ('unsafe_last', last_unsafe,
@@ -320,7 +330,7 @@ def ct_DS_finite_time(
              - sum(Li * gi for Li, gi in zip(
                  L_unsafe_per_region[-1], g_unsafe[-1]))
              - L_t_unsafe[-1] * g_time
-             - lambda_,
+             - lambda_ - unsafe_delta,
              list(xt)),
         ]
         v = validate_problem(prob, named, tolerance=validate_tolerance)

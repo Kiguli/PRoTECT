@@ -103,6 +103,140 @@ def solve_safety_problem(
     return last, 'cvxopt'
 
 
+# ----------------------------------------------------------------------
+# Discrete-time deterministic version (v2 parity)
+# ----------------------------------------------------------------------
+
+def solve_dt_DS_safety_problem(
+    degrees, x, f,
+    L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
+    p_syms=(), P_lo=(), P_hi=(),
+    margin=0.0, mosek_tol=None, validate_tolerance=1e-8,
+    init_margin=0.0, unsafe_margin=0.0, step_margin=0.0,
+):
+    """Discrete-time-deterministic version of solve_safety_problem."""
+    from .dt_DS_robust import dt_DS_robust
+
+    last = None; cumulative = 0.0
+    for solver in ('mosek', 'cvxopt'):
+        for degree in degrees:
+            kw = dict(
+                b_degree=degree, dim=len(x),
+                L_initial=L_initial, U_initial=U_initial,
+                L_unsafe=L_unsafe, U_unsafe=U_unsafe,
+                L_space=L_space, U_space=U_space,
+                x=x, f=f, p_syms=p_syms, P_lo=P_lo, P_hi=P_hi,
+                margin=margin, solver=solver,
+                validate_sos=True, validate_tolerance=validate_tolerance,
+                init_margin=init_margin, unsafe_margin=unsafe_margin,
+                step_margin=step_margin,
+            )
+            if solver == 'mosek' and mosek_tol is not None:
+                kw['mosek_tol'] = mosek_tol
+            result = dt_DS_robust(**kw)
+            cumulative += result.get('solve_time', 0.0) if result else 0.0
+            last = result
+            if result and 'barrier' in result and 'error' not in result:
+                result['solver'] = solver
+                result['solve_time_total'] = cumulative
+                return result, solver
+    if last is None: last = {}
+    last['solver'] = 'cvxopt'; last['solve_time_total'] = cumulative
+    return last, 'cvxopt'
+
+
+# ----------------------------------------------------------------------
+# Continuous-time stochastic version (v2 parity)
+# ----------------------------------------------------------------------
+
+def solve_ct_SS_safety_problem(
+    degrees, x, f, delta, rho, p_rate, T,
+    L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
+    p_syms=(), P_lo=(), P_hi=(),
+    confidence=None,
+    margin=0.0, mosek_tol=None, validate_tolerance=1e-8,
+    init_margin=0.0, unsafe_margin=0.0, generator_margin=0.0,
+):
+    """Continuous-time-stochastic version of solve_safety_problem."""
+    from .ct_SS_robust import ct_SS_robust
+
+    last = None; cumulative = 0.0
+    for solver in ('mosek', 'cvxopt'):
+        for degree in degrees:
+            kw = dict(
+                b_degree=degree, dim=len(x),
+                L_initial=L_initial, U_initial=U_initial,
+                L_unsafe=L_unsafe, U_unsafe=U_unsafe,
+                L_space=L_space, U_space=U_space,
+                x=x, f=f, delta=delta, rho=rho, p_rate=p_rate, T=T,
+                p_syms=p_syms, P_lo=P_lo, P_hi=P_hi,
+                confidence=confidence,
+                margin=margin, solver=solver,
+                validate_sos=True, validate_tolerance=validate_tolerance,
+                init_margin=init_margin, unsafe_margin=unsafe_margin,
+                generator_margin=generator_margin,
+            )
+            if solver == 'mosek' and mosek_tol is not None:
+                kw['mosek_tol'] = mosek_tol
+            result = ct_SS_robust(**kw)
+            cumulative += result.get('solve_time', 0.0) if result else 0.0
+            last = result
+            if result and 'barrier' in result and 'error' not in result:
+                result['solver'] = solver
+                result['solve_time_total'] = cumulative
+                return result, solver
+    if last is None: last = {}
+    last['solver'] = 'cvxopt'; last['solve_time_total'] = cumulative
+    return last, 'cvxopt'
+
+
+# ----------------------------------------------------------------------
+# Discrete-time stochastic version (v2 parity)
+# ----------------------------------------------------------------------
+
+def solve_dt_SS_safety_problem(
+    degrees, x, varsigma, f, t,
+    L_initial, U_initial, L_unsafe, U_unsafe, L_space, U_space,
+    p_syms=(), P_lo=(), P_hi=(),
+    noise_type='normal', confidence=None,
+    mean=None, sigma=None, rate=None, a=None, b=None,
+    margin=0.0, mosek_tol=None, validate_tolerance=1e-8,
+    init_margin=0.0, unsafe_margin=0.0, expectation_margin=0.0,
+):
+    """Discrete-time-stochastic version of solve_safety_problem."""
+    from .dt_SS_robust import dt_SS_robust
+
+    last = None; cumulative = 0.0
+    for solver in ('mosek', 'cvxopt'):
+        for degree in degrees:
+            kw = dict(
+                b_degree=degree, dim=len(x),
+                L_initial=L_initial, U_initial=U_initial,
+                L_unsafe=L_unsafe, U_unsafe=U_unsafe,
+                L_space=L_space, U_space=U_space,
+                x=x, varsigma=varsigma, f=f, t=t,
+                p_syms=p_syms, P_lo=P_lo, P_hi=P_hi,
+                noise_type=noise_type, confidence=confidence,
+                mean=mean, sigma=sigma, rate=rate, a=a, b=b,
+                margin=margin, solver=solver,
+                validate_sos=True, validate_tolerance=validate_tolerance,
+                init_margin=init_margin, unsafe_margin=unsafe_margin,
+                expectation_margin=expectation_margin,
+            )
+            if solver == 'mosek' and mosek_tol is not None:
+                kw['mosek_tol'] = mosek_tol
+            result = dt_SS_robust(**kw)
+            cumulative += result.get('solve_time', 0.0) if result else 0.0
+            last = result
+            if result and 'barrier' in result and 'error' not in result:
+                result['solver'] = solver
+                result['solve_time_total'] = cumulative
+                return result, solver
+    if last is None: last = {}
+    last['solver'] = 'cvxopt'; last['solve_time_total'] = cumulative
+    return last, 'cvxopt'
+
+
 def solve_finite_time_safety_problem(
     degrees, time_orders, T_horizon,
     x, f,

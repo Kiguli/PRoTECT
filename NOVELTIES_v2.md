@@ -166,13 +166,19 @@ applies to all four barrier classes.
 CVXOPT solves the same programme without issue. v1 forced the user
 to retry by hand.
 
-**Solution.** `solve_safety_problem(degrees, ...)` and
-`solve_finite_time_safety_problem(degrees, time_orders, T, ...)`
-sweep through (degree, time_orders) combinations with MOSEK first,
-fall back to CVXOPT only when MOSEK can't produce a barrier at
-any combination, and return the first feasible certificate.
-Particularly useful on CVDP23 finite-time, where MOSEK converges
-but CVXOPT delivers the lowest pointwise slack — the wrapper
+**Solution.** Five high-level wrappers — one per v2 barrier class
+plus the finite-time entry:
+
+  * `solve_safety_problem` (continuous-time deterministic)
+  * `solve_dt_DS_safety_problem`
+  * `solve_ct_SS_safety_problem`
+  * `solve_dt_SS_safety_problem`
+  * `solve_finite_time_safety_problem` (deterministic finite-horizon)
+
+Each sweeps through a degree list with MOSEK first, falls back to
+CVXOPT only when MOSEK can't produce a barrier at any degree, and
+returns the first feasible certificate. Useful on CVDP23 finite-time
+where CVXOPT delivers the lowest pointwise slack — the wrapper
 automatically picks whichever solver gives the cleanest verdict.
 
 ## 7. Sinc relaxation for non-polynomial dynamics
@@ -242,9 +248,10 @@ becomes a box constraint absorbable by the v2 SOS pipeline.
 non-polynomial terms beyond the registry in `relaxations.py`.
 
 ## 9. Per-condition strict-positivity margins
-*Files: `src/functions/ct_DS_robust.py` (new `init_margin`,
-`unsafe_margin`, `lie_margin` parameters; pattern replicable across
-the other solvers)*
+*Files: `src/functions/ct_DS_robust.py`, `dt_DS_robust.py`,
+`ct_SS_robust.py`, `dt_SS_robust.py`, `ct_DS_finite_time.py`,
+`dt_DS_finite_time.py` (six solvers; per-class decrement-condition
+margin name)*
 
 **Problem.** The pointwise validator (feature 1) catches certificates
 that are coefficient-clean but pointwise-loose by a fraction of a
@@ -278,9 +285,19 @@ infeasible — diagnostically confirming the certificate's intrinsic
 margin is below that threshold. The per-condition $\delta$s thus also
 serve as a *quantitative probe of the certificate's real margin*.
 
-**Coverage.** Currently implemented in `ct_DS_robust`; the same code
-pattern (subtract $\delta$ from each `add_sos_constraint` LHS and the
-validator's `named` list) extends to the three other v2 solvers.
+**Coverage.** Implemented in all six v2 solvers (`ct_DS_robust`,
+`dt_DS_robust`, `ct_SS_robust`, `dt_SS_robust`, `ct_DS_finite_time`,
+`dt_DS_finite_time`) with class-appropriate decrement-condition
+margin name:
+
+| solver | decrement-condition margin |
+| --- | --- |
+| `ct_DS_robust`, `ct_DS_finite_time` | `lie_margin` |
+| `dt_DS_robust`, `dt_DS_finite_time` | `step_margin` |
+| `ct_SS_robust` | `generator_margin` |
+| `dt_SS_robust` | `expectation_margin` |
+
+Plus `init_margin` and `unsafe_margin` in every solver.
 
 ## 10. Reach-avoid encoding
 *Files: `src/functions/ct_DS_reach_avoid.py`, `src/functions/reach_avoid.py`*
@@ -439,7 +456,7 @@ vertex certificates).
 | 6. MOSEK/CVXOPT fallback + degree sweep | `solve_helpers.py` | Single-solver brittleness | all four |
 | 7. **Sinc relaxation** | `sinc_relaxation.py`, `relaxations.py` | **No trig dynamics support** | all four |
 | 8. Padé approximant relaxation | `pade.py` | No support for arbitrary smooth non-polynomial terms | all four |
-| 9. Per-condition margin | `ct_DS_robust.py` (pattern) | Rigorous pointwise margin > solver tolerance | all four (pattern) |
+| 9. Per-condition margin | all 6 v2 solvers | Rigorous pointwise margin > solver tolerance | all four |
 | 10. Reach-avoid encoding | `ct_DS_reach_avoid.py`, `reach_avoid.py` | Only safety in v1 | continuous-time det. |
 | 11. Hybrid barriers | `ct_DS_hybrid.py`, `hybrid.py` | No hybrid-mode support | continuous-time det. |
 | 12. Piecewise input | `ct_DS_piecewise_sequence.py`, `piecewise_input.py` | No time-varying controller | continuous-time det. |

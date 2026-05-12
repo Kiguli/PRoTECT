@@ -51,6 +51,9 @@ def dt_DS_robust(
     validate_sos=False,
     validate_tolerance=1e-8,
     maximize_separation=False,
+    init_margin=0.0,
+    unsafe_margin=0.0,
+    step_margin=0.0,
 ):
     result = {'b_degree': b_degree}
 
@@ -127,18 +130,25 @@ def dt_DS_robust(
     Barrier_f = Barrier.subs([(x[i], y[i]) for i in range(n)])
     Barrier_f = Barrier_f.subs([(y[i], f[i]) for i in range(n)])
 
+    # Per-condition strict-positivity margins (see ct_DS_robust for the
+    # theoretical rationale).
+    init_delta   = float(init_margin)
+    unsafe_delta = float(unsafe_margin)
+    step_delta   = float(step_margin)
+
     try:
         first_condition = prob.add_sos_constraint(
-            -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma, x)
+            -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma - init_delta, x)
 
         for j in range(n_unsafe):
             second_condition = prob.add_sos_constraint(
-                Barrier - sum(Lji * gji for Lji, gji in zip(L1[j], g1_polys[j])) - lambda_, x)
+                Barrier - sum(Lji * gji for Lji, gji in zip(L1[j], g1_polys[j])) - lambda_ - unsafe_delta, x)
 
         last_condition = prob.add_sos_constraint(
             -Barrier_f + Barrier
             - sum(Lsi * gi for Lsi, gi in zip(Ls, g_space))
-            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+            - step_delta,
             xp)
 
         barrier_constraint = prob.add_sos_constraint(Barrier, x)
@@ -201,17 +211,18 @@ def dt_DS_robust(
                                    pointwise_verdict)
         named = [
             ('init', first_condition,
-             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma,
+             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma - init_delta,
              list(x)),
             ('step',
              last_condition,
              -Barrier_f + Barrier
              - sum(Lsi * gi for Lsi, gi in zip(Ls, g_space))
-             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+             - step_delta,
              list(xp)),
             ('barrier', barrier_constraint, Barrier, list(x)),
             ('unsafe_last', second_condition,
-             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_,
+             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_ - unsafe_delta,
              list(x)),
         ]
         v = validate_problem(prob, named, tolerance=validate_tolerance)

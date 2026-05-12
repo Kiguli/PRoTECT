@@ -46,6 +46,7 @@ def ct_SS_robust(
     gam=None, lam=None, c_val=None, l_degree=None,
     margin=0.0, mosek_tol=None,
     validate_sos=False, validate_tolerance=1e-8,
+    init_margin=0.0, unsafe_margin=0.0, generator_margin=0.0,
 ):
     result = {'b_degree': b_degree}
 
@@ -129,18 +130,24 @@ def ct_SS_robust(
                    + 0.5 * np.trace((np.transpose(delta) @ delta) * grad2)
                    + jump_term)
 
+    # Per-condition strict-positivity margins (see ct_DS_robust).
+    init_delta = float(init_margin)
+    unsafe_delta = float(unsafe_margin)
+    gen_delta = float(generator_margin)
+
     try:
         first_condition = prob.add_sos_constraint(
-            -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma, x)
+            -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma - init_delta, x)
 
         for j in range(n_unsafe):
             second_condition = prob.add_sos_constraint(
-                Barrier - sum(Lji * gji for Lji, gji in zip(L1[j], g1_polys[j])) - lambda_, x)
+                Barrier - sum(Lji * gji for Lji, gji in zip(L1[j], g1_polys[j])) - lambda_ - unsafe_delta, x)
 
         last_condition = prob.add_sos_constraint(
             -Barrier_gen + c
             - sum(Lsi * gi for Lsi, gi in zip(Ls, g_space))
-            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+            - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+            - gen_delta,
             xp)
 
         barrier_constraint = prob.add_sos_constraint(Barrier, x)
@@ -210,15 +217,16 @@ def ct_SS_robust(
                                    pointwise_verdict)
         named = [
             ('init', first_condition,
-             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma, list(x)),
+             -Barrier - sum(Li * gi for Li, gi in zip(L0, g0_polys)) + gamma - init_delta, list(x)),
             ('generator', last_condition,
              -Barrier_gen + c
              - sum(Lsi * gi for Lsi, gi in zip(Ls, g_space))
-             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param)),
+             - sum(Lpk * gpk for Lpk, gpk in zip(Lp, g_param))
+             - gen_delta,
              list(xp)),
             ('barrier', barrier_constraint, Barrier, list(x)),
             ('unsafe_last', second_condition,
-             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_, list(x)),
+             Barrier - sum(Li * gi for Li, gi in zip(L1[-1], g1_polys[-1])) - lambda_ - unsafe_delta, list(x)),
         ]
         v = validate_problem(prob, named, tolerance=validate_tolerance)
         result['sos_residuals'] = {
